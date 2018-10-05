@@ -59,7 +59,7 @@ class Train():
             self.optim.step()
 
             # Keep track of loss for current epoch
-            epoch_loss += loss.data[0]
+            epoch_loss += loss.data.item()
 
             # Keep track of the evaluation metric
             self.metric.add(outputs.data, labels.data)
