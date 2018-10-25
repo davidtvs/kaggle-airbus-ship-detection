@@ -1,6 +1,6 @@
 # Exploring public kernels
 
-This is a compilation of the best public kernels available at this time for the [Airbus Ship Detection Challenge](https://www.kaggle.com/c/airbus-ship-detection/overview) competition. The goal is to understand what other competitors have already done and their main findings.
+This is a compilation of the best public kernels available for the [Airbus Ship Detection Challenge](https://www.kaggle.com/c/airbus-ship-detection/overview) competition as of October 7th, 2018. The goal is to understand what other competitors have already done and their main findings.
 
 Sorting the list of public kernels by `Best score` we find the following kernels:
 
