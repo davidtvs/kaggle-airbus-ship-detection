@@ -14,8 +14,7 @@ def rle_encode(mask):
             (start length) string
 
     """
-    # Transpose is needed because RLE is numbered from top to bottom, then left
-    # to right
+    # Transpose is needed because RLE is numbered from top to bottom, then left to right
     pixels = mask.T.flatten()
     pixels = np.concatenate([[0], pixels, [0]])
     runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
@@ -29,8 +28,7 @@ def rle_decode(mask_rle, shape):
     Source: https://www.kaggle.com/paulorzp/run-length-encode-and-decode
 
     Arguments:
-        mask_rle (str): the run-length encoded pixels formatted as
-            (start length)
+        mask_rle (str): the run-length encoded pixels formatted as (start length)
         shape (tuple): the dimensions of the array to return (height, width)
 
     Returns:
