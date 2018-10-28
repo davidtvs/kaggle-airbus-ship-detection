@@ -6,9 +6,9 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 
 import utils
+import models.net as models
 from args import get_arguments
 from data.airbus import AirbusShipDataset
-import models.net as models
 
 root_dir = "/media/davidtvs/Storage/Datasets/airbus-ship-detection"
 
@@ -115,6 +115,7 @@ if __name__ == "__main__":
     snsnet, input_dim = models.r18_sns_net(num_classes)
     print(snsnet)
 
+    # Compose the image transforms to be applied to the data
     image_transform = transforms.Compose(
         [transforms.Resize(input_dim), transforms.ToTensor()]
     )
@@ -125,7 +126,7 @@ if __name__ == "__main__":
 
     # Initialize the datasets and dataloaders
     print()
-    print("Loading dataset and dataloader")
+    print("Loading training dataset")
     trainset = AirbusShipDataset(
         root_dir,
         mode="train",
@@ -135,14 +136,11 @@ if __name__ == "__main__":
     train_loader = data.DataLoader(
         trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
     )
-    images, targets = iter(train_loader).next()
-    print()
-    print("Training dataset:")
-    print("Number of images:", len(trainset))
-    print("Image size:", images.size())
-    print("Targets size:", targets.size())
-    utils.imshow_batch(images, targets)
+    if args.dataset_info:
+        utils.dataloader_info(train_loader)
 
+    print()
+    print("Loading validation dataset")
     valset = AirbusShipDataset(
         root_dir,
         mode="val",
@@ -152,27 +150,7 @@ if __name__ == "__main__":
     val_loader = data.DataLoader(
         valset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
     )
-    images, targets = iter(val_loader).next()
-    print()
-    print("Validation dataset:")
-    print("Number of images:", len(valset))
-    print("Image size:", images.size())
-    print("Targets size:", targets.size())
-    utils.imshow_batch(images, targets)
+    if args.dataset_info:
+        utils.dataloader_info(val_loader)
 
-    testset = AirbusShipDataset(
-        root_dir,
-        mode="test",
-        transform=image_transform,
-        target_transform=target_transform,
-    )
-    test_loader = data.DataLoader(
-        testset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
-    )
-    images, targets = iter(test_loader).next()
-    print()
-    print("Test dataset:")
-    print("Number of images:", len(testset))
-    print("Image size:", images.size())
-    print("Targets size:", targets.size())
-    utils.imshow_batch(images)
+    dataset = {"train": train_loader, "val": val_loader}

@@ -38,3 +38,11 @@ def imshow_batch(images, targets=None):
         plt.gca().set_title("Batch of samples")
 
     plt.show()
+
+
+def dataloader_info(dataloader):
+    images, targets = iter(dataloader).next()
+    print("Number of images:", len(dataloader.dataset))
+    print("Image size:", images.size())
+    print("Targets size:", targets.size())
+    imshow_batch(images, targets)

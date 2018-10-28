@@ -7,15 +7,6 @@ def get_arguments():
     """
     parser = ArgumentParser()
 
-    # Execution mode
-    parser.add_argument(
-        "--mode",
-        "-m",
-        choices=["train"],
-        default="train",
-        help=("train: performs training and validation"),
-    )
-
     # Hyperparameters
     parser.add_argument(
         "--batch-size", "-b", type=int, default=10, help="The batch size. Default: 10"
@@ -42,6 +33,12 @@ def get_arguments():
         "--device",
         default="cuda",
         help="Device to use for computation. E.g. 'cuda' or 'cpu'",
+    )
+    parser.add_argument(
+        "--dataset-info",
+        dest="dataset_info",
+        default="store_true",
+        help="Prints information about the datasets and shows a random batch of images",
     )
 
     return parser.parse_args()
