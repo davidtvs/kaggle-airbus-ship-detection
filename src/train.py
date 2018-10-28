@@ -7,6 +7,7 @@ import torchvision.transforms as transforms
 
 import utils
 from data.airbus import AirbusShipDataset
+import models.net as models
 
 root_dir = "/media/davidtvs/Storage/Datasets/airbus-ship-detection"
 
@@ -104,6 +105,8 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
 
 # Run only if this module is being run directly
 if __name__ == "__main__":
+
+    # Initialize the datasets and dataloaders
     trainset = AirbusShipDataset(
         root_dir,
         mode="train",
@@ -136,3 +139,8 @@ if __name__ == "__main__":
     print(len(testset))
     images, targets = iter(test_loader).next()
     utils.imshow_batch(images)
+
+    # Initialize ship or no-ship detection network
+    num_classes = 1
+    snsnet, input_dim = models.r18_sns_net(num_classes)
+    print(snsnet)
