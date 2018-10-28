@@ -103,7 +103,7 @@ class AirbusShipDataset(Dataset):
             if pd.notna(rle):
                 target += rle_decode(rle, img.size)
 
-        target = np.expand_dims(target, -1)
+        target = Image.fromarray(target)
 
         # Apply transforms if there are any
         if self.transform:
