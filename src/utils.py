@@ -1,3 +1,4 @@
+import torch
 import torchvision
 import numpy as np
 import matplotlib.pyplot as plt
@@ -12,11 +13,16 @@ def imshow_batch(images, targets=None):
             to None only the batch of images is displayed.
 
     """
+    if not isinstance(images, torch.Tensor) or images.dim() != 4:
+        raise RuntimeError(
+            "Expected '{0}', got '{1}'".format(type(torch.Tensor), type(images))
+        )
 
     # Make a grid with the images
     images = torchvision.utils.make_grid(images).numpy()
 
-    if targets is not None:
+    # Check if targets is a Tensor. If it is, display it; otherwise, show the images
+    if isinstance(targets, torch.Tensor) and targets.dim() == 4:
         targets = torchvision.utils.make_grid(targets).numpy()
 
         fig, axarr = plt.subplots(3, 1)
