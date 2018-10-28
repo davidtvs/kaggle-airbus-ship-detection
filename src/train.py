@@ -11,7 +11,7 @@ from data.airbus import AirbusShipDataset
 root_dir = "/media/davidtvs/Storage/Datasets/airbus-ship-detection"
 
 
-def train_model(model, dataloaders, criterion, optimizer, num_epochs, use_cuda):
+def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
     """Trains a model on the training set and evaluates it on the validation set.
 
     The model is trained on the training dataset (`dataloaders['train']`), minimizing
@@ -19,14 +19,14 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, use_cuda):
     training, the model is evaluated on the validation set (`dataloaders['val']`).
 
     Arguments:
-        model (nn.Module): the model instance to train.
-        dataloaders (utils.data.Dataloader): Provides single or multi-process
+        model (torch.nn.Module): the model instance to train.
+        dataloaders (torch.utils.data.Dataloader): Provides single or multi-process
             iterators over the dataset.
-        criterion (nn): The loss criterion.
-        optimizer (optim): The optimization algorithm.
-        num_epochs (int): The number of training epochs. 
-        use_cuda (bool): If ``True``, the training is performed using
-            CUDA operations (GPU).
+        criterion (torch.nn): The loss criterion.
+        optimizer (torch.optim): The optimization algorithm.
+        num_epochs (int): The number of training epochs.
+        device (torch.device): Object representing the device on which to perform the
+            training.
 
     """
     since = time.time()
@@ -52,9 +52,8 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, use_cuda):
 
             # Iterate over data.
             for inputs, labels in dataloaders[phase]:
-                if use_cuda:
-                    inputs = inputs.cuda()
-                    labels = labels.cuda()
+                inputs = inputs.to(device)
+                labels = labels.to(device)
 
                 # zero the parameter gradients
                 optimizer.zero_grad()

@@ -43,6 +43,5 @@ def rle_decode(mask_rle, shape):
     for lo, hi in zip(starts, ends):
         mask[lo:hi] = 1
 
-    # Transpose is needed because RLE is numbered from top to bottom, then left
-    # to right
+    # Transpose is needed because RLE is numbered from top to bottom, then left to right
     return mask.reshape(shape).T
