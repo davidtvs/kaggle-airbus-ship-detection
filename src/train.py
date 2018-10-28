@@ -104,12 +104,35 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
 
 # Run only if this module is being run directly
 if __name__ == "__main__":
-    dataset = AirbusShipDataset(
+    trainset = AirbusShipDataset(
         root_dir,
+        mode="train",
         transform=transforms.ToTensor(),
         target_transform=transforms.ToTensor(),
     )
-    dataloader = data.DataLoader(dataset, batch_size=4, shuffle=True, num_workers=4)
+    train_loader = data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=4)
+    print(len(trainset))
+    images, targets = iter(train_loader).next()
+    utils.imshow_batch(images, targets)
 
-    for images, targets in dataloader:
-        utils.imshow_batch(images, targets)
+    valset = AirbusShipDataset(
+        root_dir,
+        mode="val",
+        transform=transforms.ToTensor(),
+        target_transform=transforms.ToTensor(),
+    )
+    val_loader = data.DataLoader(valset, batch_size=4, shuffle=True, num_workers=4)
+    print(len(valset))
+    images, targets = iter(val_loader).next()
+    utils.imshow_batch(images, targets)
+
+    testset = AirbusShipDataset(
+        root_dir,
+        mode="test",
+        transform=transforms.ToTensor(),
+        target_transform=transforms.ToTensor(),
+    )
+    test_loader = data.DataLoader(testset, batch_size=4, shuffle=True, num_workers=4)
+    print(len(testset))
+    images, targets = iter(test_loader).next()
+    utils.imshow_batch(images)
