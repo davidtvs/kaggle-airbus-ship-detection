@@ -9,6 +9,7 @@ import utils
 import models.net as models
 from args import get_arguments
 from data.airbus import AirbusShipDataset
+from transforms import TargetHasShipTensor
 
 root_dir = "/media/davidtvs/Storage/Datasets/airbus-ship-detection"
 
@@ -32,6 +33,8 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
 
     """
     since = time.time()
+
+    model = model.to(device)
 
     val_acc_history = []
 
@@ -66,7 +69,7 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
                     outputs = model(inputs)
                     loss = criterion(outputs, labels)
 
-                    _, preds = torch.max(outputs, 1)
+                    preds = torch.sigmoid(outputs).round_()
 
                     # backward + optimize only if in training phase
                     if phase == "train":
@@ -121,7 +124,7 @@ if __name__ == "__main__":
     )
 
     target_transform = transforms.Compose(
-        [transforms.Resize(input_dim), transforms.ToTensor()]
+        [transforms.Resize(input_dim), TargetHasShipTensor()]
     )
 
     # Initialize the datasets and dataloaders
@@ -153,4 +156,15 @@ if __name__ == "__main__":
     if args.dataset_info:
         utils.dataloader_info(val_loader)
 
-    dataset = {"train": train_loader, "val": val_loader}
+    dataloaders = {"train": train_loader, "val": val_loader}
+
+    # Loss function: binary cross entropy with logits. Expects logits therefore the
+    # output layer must return a logits instead of probabilities
+    criterion = torch.nn.BCEWithLogitsLoss()
+
+    # Optimizer: adam
+    optimizer = torch.optim.Adam(snsnet.parameters(), lr=args.learning_rate)
+
+    # Train the model
+    device = torch.device(args.device)
+    train_model(snsnet, dataloaders, criterion, optimizer, args.epochs, device)
