@@ -6,6 +6,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 
 import utils
+from args import get_arguments
 from data.airbus import AirbusShipDataset
 import models.net as models
 
@@ -105,6 +106,9 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
 
 # Run only if this module is being run directly
 if __name__ == "__main__":
+    # Get arguments from the command-line
+    args = get_arguments()
+
     # Initialize ship or no-ship detection network
     print("Loading ship detection model")
     num_classes = 1
@@ -128,7 +132,9 @@ if __name__ == "__main__":
         transform=image_transform,
         target_transform=target_transform,
     )
-    train_loader = data.DataLoader(trainset, batch_size=4, shuffle=True, num_workers=4)
+    train_loader = data.DataLoader(
+        trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
+    )
     images, targets = iter(train_loader).next()
     print()
     print("Training dataset:")
@@ -143,7 +149,9 @@ if __name__ == "__main__":
         transform=image_transform,
         target_transform=target_transform,
     )
-    val_loader = data.DataLoader(valset, batch_size=4, shuffle=True, num_workers=4)
+    val_loader = data.DataLoader(
+        valset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
+    )
     images, targets = iter(val_loader).next()
     print()
     print("Validation dataset:")
@@ -158,7 +166,9 @@ if __name__ == "__main__":
         transform=image_transform,
         target_transform=target_transform,
     )
-    test_loader = data.DataLoader(testset, batch_size=4, shuffle=True, num_workers=4)
+    test_loader = data.DataLoader(
+        testset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
+    )
     images, targets = iter(test_loader).next()
     print()
     print("Test dataset:")
