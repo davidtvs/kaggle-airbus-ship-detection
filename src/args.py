@@ -36,8 +36,7 @@ def get_arguments():
     )
     parser.add_argument(
         "--dataset-info",
-        dest="dataset_info",
-        default="store_true",
+        action="store_true",
         help="Prints information about the datasets and shows a random batch of images",
     )
 
