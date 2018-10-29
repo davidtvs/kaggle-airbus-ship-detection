@@ -11,10 +11,8 @@ from args import get_arguments
 from data.airbus import AirbusShipDataset
 from transforms import TargetHasShipTensor
 
-root_dir = "/media/davidtvs/Storage/Datasets/airbus-ship-detection"
 
-
-def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
+def train_model(model, dataloaders, criterion, optimizer):
     """Trains a model on the training set and evaluates it on the validation set.
 
     The model is trained on the training dataset (`dataloaders['train']`), minimizing
@@ -27,22 +25,21 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
             iterators over the dataset.
         criterion (torch.nn): The loss criterion.
         optimizer (torch.optim): The optimization algorithm.
-        num_epochs (int): The number of training epochs.
-        device (torch.device): Object representing the device on which to perform the
-            training.
 
     """
     since = time.time()
 
+    device = torch.device(args.device)
     model = model.to(device)
 
+    # Initialize metrics
     val_acc_history = []
-
     best_model = copy.deepcopy(model.state_dict())
     best_acc = 0.0
 
-    for epoch in range(num_epochs):
-        print("Epoch {}/{}".format(epoch, num_epochs - 1))
+    # Training cycle
+    for epoch in range(args.epochs):
+        print("Epoch {}/{}".format(epoch, args.epochs - 1))
         print("-" * 10)
 
         # Each epoch has a training and validation phase
@@ -89,6 +86,7 @@ def train_model(model, dataloaders, criterion, optimizer, num_epochs, device):
             if phase == "val" and epoch_acc > best_acc:
                 best_acc = epoch_acc
                 best_model = copy.deepcopy(model.state_dict())
+                utils.save_checkpoint(model, optimizer, epoch, best_acc, args)
             if phase == "val":
                 val_acc_history.append(epoch_acc)
 
@@ -131,7 +129,7 @@ if __name__ == "__main__":
     print()
     print("Loading training dataset")
     trainset = AirbusShipDataset(
-        root_dir,
+        args.dataset_dir,
         mode="train",
         transform=image_transform,
         target_transform=target_transform,
@@ -145,7 +143,7 @@ if __name__ == "__main__":
     print()
     print("Loading validation dataset")
     valset = AirbusShipDataset(
-        root_dir,
+        args.dataset_dir,
         mode="val",
         transform=image_transform,
         target_transform=target_transform,
@@ -166,5 +164,4 @@ if __name__ == "__main__":
     optimizer = torch.optim.Adam(snsnet.parameters(), lr=args.learning_rate)
 
     # Train the model
-    device = torch.device(args.device)
-    train_model(snsnet, dataloaders, criterion, optimizer, args.epochs, device)
+    train_model(snsnet, dataloaders, criterion, optimizer)

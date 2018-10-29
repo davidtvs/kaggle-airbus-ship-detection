@@ -1,3 +1,5 @@
+import os
+import errno
 import torch
 import torchvision
 import numpy as np
@@ -47,8 +49,61 @@ def imshow_batch(images, targets=None):
 
 
 def dataloader_info(dataloader):
+    """Displays information about a given dataloader.
+
+    Prints the size of the dataset, the dimensions of the images and target images, and
+    displays a batch of images and targets with `imshow_batch()`.
+
+    Arguments:
+        dataloader (torch.utils.data.Dataloader): the dataloader.
+
+    """
     images, targets = iter(dataloader).next()
     print("Number of images:", len(dataloader.dataset))
     print("Image size:", images.size())
     print("Targets size:", targets.size())
     imshow_batch(images, targets)
+
+
+def save_checkpoint(model, optimizer, metric, epoch, args):
+    """Saves the model in a specified directory with a specified name.save
+
+    Arguments:
+        model (torch.nn.Module): the model to save.
+        optimizer (torch.optim): the model optimizer.
+        epoch (int): the current epoch.
+        metric (object): the performance metric.
+        args (ArgumentParser): the command-line arguments.
+
+    """
+    name = args.model_name
+
+    if not os.path.isdir(args.checkpoint_dir):
+        raise IOError("The directory '{0}' doesn't exist.".format(args.checkpoint_dir))
+
+    # Create the subdirectory for the checkpoint in case it doesn't exist
+    save_dir = os.path.join(args.checkpoint_dir, name)
+    try:
+        os.mkdir(save_dir)
+    except OSError as exc:
+        if exc.errno != errno.EEXIST:
+            raise
+        pass
+
+    # Save model
+    model_path = os.path.join(save_dir, name)
+    checkpoint = {
+        "epoch": epoch,
+        "metric": metric,
+        "state_dict": model.state_dict(),
+        "optimizer": optimizer.state_dict(),
+    }
+    torch.save(checkpoint, model_path + ".pth")
+
+    # Save arguments
+    summary_filename = os.path.join(save_dir, name + "_args.txt")
+    with open(summary_filename, "w") as summary_file:
+        sorted_args = sorted(vars(args))
+        for arg in sorted_args:
+            arg_str = "{0}: {1}\n".format(arg, getattr(args, arg))
+            summary_file.write(arg_str)
