@@ -1,5 +1,6 @@
 import time
 import copy
+from tqdm import tqdm
 
 import torch
 import torch.utils.data as data
@@ -38,22 +39,25 @@ def train_model(model, dataloaders, criterion, optimizer):
     best_acc = 0.0
 
     # Training cycle
+    print()
     for epoch in range(args.epochs):
         print("Epoch {}/{}".format(epoch, args.epochs - 1))
-        print("-" * 10)
+        print("-" * 80)
 
         # Each epoch has a training and validation phase
         for phase in ["train", "val"]:
             if phase == "train":
-                model.train()  # Set model to training mode
+                # Set model to training mode
+                model.train()
             else:
-                model.eval()  # Set model to evaluate mode
+                # Set model to evaluate mode
+                model.eval()
 
             running_loss = 0.0
             running_corrects = 0
 
             # Iterate over data.
-            for inputs, labels in dataloaders[phase]:
+            for step, (inputs, labels) in enumerate(tqdm(dataloaders[phase])):
                 inputs = inputs.to(device)
                 labels = labels.to(device)
 
@@ -113,7 +117,7 @@ if __name__ == "__main__":
     # Initialize ship or no-ship detection network
     print("Loading ship detection model")
     num_classes = 1
-    snsnet, input_dim = models.r18_sns_net(num_classes)
+    snsnet, input_dim = models.r34_sns_net(num_classes)
     print(snsnet)
 
     # Compose the image transforms to be applied to the data
