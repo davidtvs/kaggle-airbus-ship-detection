@@ -5,7 +5,7 @@ from functools import partial
 class EarlyStopping(object):
     """Stop training when a metric has stopped improving.
 
-    Args:
+    Arguments:
         trainer (Trainer): Instance of the Trainer class.
         mode (str): One of `min`, `max`. In `min` mode, the trainer is stopped when the
             quantity monitored has stopped decreasing; in `max` mode it will be stopped

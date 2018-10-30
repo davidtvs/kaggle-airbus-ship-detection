@@ -151,11 +151,8 @@ if __name__ == "__main__":
     # Get arguments from the command-line
     args = get_arguments()
 
-    # Initialize ship or no-ship detection network
-    print("Loading ship detection model")
     num_classes = 1
-    snsnet, input_dim = models.r34_sns_net(num_classes)
-    print(snsnet)
+    input_dim = 224
 
     # Compose the image transforms to be applied to the data
     image_transform = transforms.Compose(
@@ -167,8 +164,7 @@ if __name__ == "__main__":
     )
 
     # Initialize the datasets and dataloaders
-    print()
-    print("Loading training dataset")
+    print("Loading training dataset...")
     trainset = AirbusShipDataset(
         args.dataset_dir,
         mode="train",
@@ -182,7 +178,7 @@ if __name__ == "__main__":
         utils.dataloader_info(train_loader)
 
     print()
-    print("Loading validation dataset")
+    print("Loading validation dataset...")
     valset = AirbusShipDataset(
         args.dataset_dir,
         mode="val",
@@ -194,6 +190,12 @@ if __name__ == "__main__":
     )
     if args.dataset_info:
         utils.dataloader_info(val_loader)
+
+    # Initialize ship or no-ship detection network
+    print()
+    print("Loading ship detection model...")
+    snsnet = models.r34_sns_net(num_classes)
+    print(snsnet)
 
     # Train the model
     print()
