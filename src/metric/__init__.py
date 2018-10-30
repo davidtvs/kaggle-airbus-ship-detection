@@ -1,5 +1,5 @@
 from .confusionmatrix import ConfusionMatrix
 from .iou import IoU
-from .metric import Metric
+from .acc import Accuracy
 
-__all__ = ['ConfusionMatrix', 'IoU', 'Metric']
+__all__ = ["ConfusionMatrix", "IoU", "Accuracy"]

@@ -7,6 +7,7 @@ import torch.utils.data as data
 import torchvision.transforms as transforms
 
 import utils
+import metric
 import models.net as models
 from args import get_arguments
 from data.airbus import AirbusShipDataset
@@ -27,6 +28,8 @@ class Trainer:
             self.model.parameters(), lr=self.args.learning_rate
         )
 
+        self.metric = metric.Accuracy()
+
     def run_epoch(self, dataloader, epoch, is_training):
         # Set model to training mode if training; otherwise, set it to evaluation mode
         if is_training:
@@ -36,7 +39,7 @@ class Trainer:
 
         # Initialize running metrics
         running_loss = 0.0
-        running_corrects = 0
+        self.metric.reset()
 
         # Iterate over data.
         for step, (inputs, targets) in enumerate(tqdm(dataloader)):
@@ -45,14 +48,12 @@ class Trainer:
             targets = targets.to(self.device)
 
             # Run a single iteration
-            step_loss, step_corrects = self.run_step(inputs, targets, is_training)
+            step_loss = self.run_step(inputs, targets, is_training)
             running_loss += step_loss
-            running_corrects += step_corrects
 
         epoch_loss = running_loss / len(dataloader.dataset)
-        epoch_acc = running_corrects.double() / len(dataloader.dataset)
 
-        return epoch_loss, epoch_acc
+        return epoch_loss
 
     def run_step(self, inputs, targets, is_training):
         # Zero the parameter gradients
@@ -65,7 +66,7 @@ class Trainer:
             loss = self.criterion(outputs, targets)
 
             # Apply the sigmoid function to get the prediction from the logits
-            preds = torch.sigmoid(outputs).round_()
+            preds = torch.sigmoid(outputs).detach().round_()
 
             # Backward only if training
             if is_training:
@@ -74,9 +75,9 @@ class Trainer:
 
         # statistics
         loss = loss.item() * inputs.size(0)
-        corrects = torch.sum(preds == targets.data)
+        self.metric.add(preds, targets)
 
-        return loss, corrects
+        return loss
 
     def fit(self, train_dataloader, val_dataloader):
         # Get the current time to know how much time it took to train the model
@@ -94,25 +95,29 @@ class Trainer:
             print("Epoch {}/{}".format(epoch, self.args.epochs - 1))
             print("-" * 80)
 
-            epoch_loss, epoch_acc = self.run_epoch(
-                train_dataloader, epoch, is_training=True
+            epoch_loss = self.run_epoch(train_dataloader, epoch, is_training=True)
+            print(
+                "Training - Loss: {:.4f} Metric: {:.4f}".format(
+                    epoch_loss, self.metric.value()
+                )
             )
-            print("Training - Loss: {:.4f} Acc: {:.4f}".format(epoch_loss, epoch_acc))
 
-            epoch_loss, epoch_acc = self.run_epoch(
-                val_dataloader, epoch, is_training=False
+            epoch_loss = self.run_epoch(val_dataloader, epoch, is_training=False)
+            print(
+                "Validation - Loss: {:.4f} Metric: {:.4f}".format(
+                    epoch_loss, self.metric.value()
+                )
             )
-            print("Validation - Loss: {:.4f} Acc: {:.4f}".format(epoch_loss, epoch_acc))
 
             # Deep copy the model
-            if epoch_acc > best_acc:
-                best_acc = epoch_acc
+            if self.metric.value() > best_acc:
+                best_acc = self.metric.value()
                 best_model = copy.deepcopy(self.model.state_dict())
                 utils.save_checkpoint(
                     self.model, self.optimizer, epoch, best_acc, self.args
                 )
 
-            val_acc_history.append(epoch_acc)
+            val_acc_history.append(self.metric.value())
             print()
 
         time_elapsed = time.time() - since
@@ -121,7 +126,7 @@ class Trainer:
                 time_elapsed // 60, time_elapsed % 60
             )
         )
-        print("Best val Acc: {:4f}".format(best_acc))
+        print("Best validation metric: {:4f}".format(best_acc))
 
         # Load the best model weights
         self.model.load_state_dict(best_model)

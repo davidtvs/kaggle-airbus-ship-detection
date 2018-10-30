@@ -1,4 +1,3 @@
-import torch
 import numpy as np
 from metric import metric
 from metric.confusionmatrix import ConfusionMatrix
@@ -14,12 +13,12 @@ class IoU(metric.Metric):
 
         IoU = true_positive / (true_positive + false_positive + false_negative).
 
-    Keyword arguments:
-    - num_classes (int): number of classes in the classification problem
-    - normalized (boolean, optional): Determines whether or not the confusion
-    matrix is normalized or not. Default: False.
-    - ignore_index (int or iterable, optional): Index of the classes to ignore
-    when computing the IoU. Can be an int, or any iterable of ints.
+    Arguments:
+        num_classes (int): number of classes in the classification problem
+        normalized (boolean, optional): Determines whether or not the confusion matrix
+            is normalized or not. Default: False.
+        ignore_index (int or iterable, optional): Index of the classes to ignore when
+            computing the IoU. Can be an int, or any iterable of ints.
     """
 
     def __init__(self, num_classes, normalized=False, ignore_index=None):
@@ -42,22 +41,25 @@ class IoU(metric.Metric):
     def add(self, predicted, target):
         """Adds the predicted and target pair to the IoU metric.
 
-        Keyword arguments:
-        - predicted (Tensor): Can be a (N, K, H, W) tensor of
-        predicted scores obtained from the model for N examples and K classes,
-        or (N, H, W) tensor of integer values between 0 and K-1.
-        - target (Tensor): Can be a (N, K, H, W) tensor of
-        target scores for N examples and K classes, or (N, H, W) tensor of
-        integer values between 0 and K-1.
+        Arguments:
+            predicted (Tensor): Can be a (N, K, H, W) tensor of
+                predicted scores obtained from the model for N examples and K classes,
+                or (N, H, W) tensor of integer values between 0 and K-1.
+            target (Tensor): Can be a (N, K, H, W) tensor of
+                target scores for N examples and K classes, or (N, H, W) tensor of
+                integer values between 0 and K-1.
 
         """
         # Dimensions check
-        assert predicted.size(0) == target.size(0), \
-            'number of targets and predicted outputs do not match'
-        assert predicted.dim() == 3 or predicted.dim() == 4, \
-            "predictions must be of dimension (N, H, W) or (N, K, H, W)"
-        assert target.dim() == 3 or target.dim() == 4, \
-            "targets must be of dimension (N, H, W) or (N, K, H, W)"
+        assert predicted.size(0) == target.size(
+            0
+        ), "number of targets and predicted outputs do not match"
+        assert (
+            predicted.dim() == 3 or predicted.dim() == 4
+        ), "predictions must be of dimension (N, H, W) or (N, K, H, W)"
+        assert (
+            target.dim() == 3 or target.dim() == 4
+        ), "targets must be of dimension (N, H, W) or (N, K, H, W)"
 
         # If the tensor is in categorical format convert it to integer format
         if predicted.dim() == 4:
@@ -73,8 +75,8 @@ class IoU(metric.Metric):
         The mean computation ignores NaN elements of the IoU array.
 
         Returns:
-            Tuple: (IoU, mIoU). The first output is the per class IoU,
-            for K classes it's numpy.ndarray with K elements. The second output,
+            Tuple: (IoU, mIoU). The first output is the per class IoU, for K classes
+            it's numpy.ndarray with K elements. The second output,
             is the mean IoU.
         """
         conf_matrix = self.conf_metric.value()
@@ -87,7 +89,7 @@ class IoU(metric.Metric):
         false_negative = np.sum(conf_matrix, 1) - true_positive
 
         # Just in case we get a division by 0, ignore/hide the error
-        with np.errstate(divide='ignore', invalid='ignore'):
+        with np.errstate(divide="ignore", invalid="ignore"):
             iou = true_positive / (true_positive + false_positive + false_negative)
 
         return iou, np.nanmean(iou)
