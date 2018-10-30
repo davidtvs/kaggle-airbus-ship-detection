@@ -10,6 +10,7 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import utils
 import metric
 import models.net as models
+from early_stopping import EarlyStopping
 from args import get_arguments
 from data.airbus import AirbusShipDataset
 from transforms import TargetHasShipTensor
@@ -18,6 +19,7 @@ from transforms import TargetHasShipTensor
 class Trainer:
     def __init__(self, model, args):
         self.args = args
+        self.stop = False
         self.device = torch.device(self.args.device)
         self.model = model.to(self.device)
 
@@ -28,9 +30,8 @@ class Trainer:
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), lr=self.args.learning_rate
         )
-        self.lr_scheduler = ReduceLROnPlateau(
-            self.optimizer, patience=args.lr_patience, verbose=True
-        )
+        self.lr_scheduler = ReduceLROnPlateau(self.optimizer, patience=args.lr_patience)
+        self.early_stopping = EarlyStopping(self, patience=args.stop_patience)
         self.metric = metric.Accuracy()
 
     def run_epoch(self, dataloader, epoch, is_training):
@@ -55,8 +56,10 @@ class Trainer:
             running_loss += step_loss
 
         epoch_loss = running_loss / len(dataloader.dataset)
+
         if not is_training:
             self.lr_scheduler.step(epoch_loss)
+            self.early_stopping.step(epoch_loss)
 
         return epoch_loss
 
@@ -78,7 +81,7 @@ class Trainer:
                 loss.backward()
                 self.optimizer.step()
 
-        # statistics
+        # Statistics
         loss = loss.item() * inputs.size(0)
         self.metric.add(preds, targets)
 
@@ -124,6 +127,11 @@ class Trainer:
 
             val_acc_history.append(self.metric.value())
             print()
+
+            # Check if we have to stop early
+            if self.stop:
+                print("Epoch {}: early stopping".format(epoch))
+                break
 
         time_elapsed = time.time() - since
         print(

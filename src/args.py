@@ -26,8 +26,17 @@ def get_arguments():
         type=int,
         default=5,
         help=(
-            "Number of epochs with no improvement after which learning rate will be"
-            "reduced. Default: 5"
+            "Number of epochs with no improvement after which learning rate is reduced."
+            " Default: 5"
+        ),
+    )
+    parser.add_argument(
+        "--stop-patience",
+        type=int,
+        default=5,
+        help=(
+            "(Early stopping) Number of epochs with no improvement after which training"
+            " is stopped. Default: 20"
         ),
     )
 
