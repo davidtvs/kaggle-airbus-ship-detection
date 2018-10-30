@@ -27,52 +27,56 @@ class Trainer:
             self.model.parameters(), lr=self.args.learning_rate
         )
 
-    def make_epoch(self, dataloader, epoch, is_training):
+    def run_epoch(self, dataloader, epoch, is_training):
         # Set model to training mode if training; otherwise, set it to evaluation mode
         if is_training:
             self.model.train()
         else:
             self.model.eval()
 
-        running_loss, running_corrects = self.make_step(dataloader, is_training)
+        # Initialize running metrics
+        running_loss = 0.0
+        running_corrects = 0
+
+        # Iterate over data.
+        for step, (inputs, targets) in enumerate(tqdm(dataloader)):
+            # Move data to the proper device
+            inputs = inputs.to(self.device)
+            targets = targets.to(self.device)
+
+            # Run a single iteration
+            step_loss, step_corrects = self.run_step(inputs, targets, is_training)
+            running_loss += step_loss
+            running_corrects += step_corrects
 
         epoch_loss = running_loss / len(dataloader.dataset)
         epoch_acc = running_corrects.double() / len(dataloader.dataset)
 
         return epoch_loss, epoch_acc
 
-    def make_step(self, dataloader, is_training):
-        # Initialize running metrics
-        running_loss = 0.0
-        running_corrects = 0
+    def run_step(self, inputs, targets, is_training):
+        # Zero the parameter gradients
+        self.optimizer.zero_grad()
 
-        # Iterate over data.
-        for step, (inputs, labels) in enumerate(tqdm(dataloader)):
-            inputs = inputs.to(self.device)
-            labels = labels.to(self.device)
+        # Forward
+        # Track history only if training
+        with torch.set_grad_enabled(is_training):
+            outputs = self.model(inputs)
+            loss = self.criterion(outputs, targets)
 
-            # Zero the parameter gradients
-            self.optimizer.zero_grad()
+            # Apply the sigmoid function to get the prediction from the logits
+            preds = torch.sigmoid(outputs).round_()
 
-            # Forward
-            # Track history only if training
-            with torch.set_grad_enabled(is_training):
-                outputs = self.model(inputs)
-                loss = self.criterion(outputs, labels)
+            # Backward only if training
+            if is_training:
+                loss.backward()
+                self.optimizer.step()
 
-                # Apply the sigmoid function to get the prediction from the logits
-                preds = torch.sigmoid(outputs).round_()
+        # statistics
+        loss = loss.item() * inputs.size(0)
+        corrects = torch.sum(preds == targets.data)
 
-                # Backward only if training
-                if is_training:
-                    loss.backward()
-                    self.optimizer.step()
-
-            # statistics
-            running_loss += loss.item() * inputs.size(0)
-            running_corrects += torch.sum(preds == labels.data)
-
-        return running_loss, running_corrects
+        return loss, corrects
 
     def fit(self, train_dataloader, val_dataloader):
         # Get the current time to know how much time it took to train the model
@@ -90,12 +94,12 @@ class Trainer:
             print("Epoch {}/{}".format(epoch, self.args.epochs - 1))
             print("-" * 80)
 
-            epoch_loss, epoch_acc = self.make_epoch(
+            epoch_loss, epoch_acc = self.run_epoch(
                 train_dataloader, epoch, is_training=True
             )
             print("Training - Loss: {:.4f} Acc: {:.4f}".format(epoch_loss, epoch_acc))
 
-            epoch_loss, epoch_acc = self.make_epoch(
+            epoch_loss, epoch_acc = self.run_epoch(
                 val_dataloader, epoch, is_training=False
             )
             print("Validation - Loss: {:.4f} Acc: {:.4f}".format(epoch_loss, epoch_acc))
