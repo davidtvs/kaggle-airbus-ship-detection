@@ -194,7 +194,7 @@ if __name__ == "__main__":
     # Initialize ship or no-ship detection network
     print()
     print("Loading ship detection model...")
-    snsnet = models.r34_sns_net(num_classes)
+    snsnet = models.resnet_snsnet(34, num_classes)
     print(snsnet)
 
     # Train the model
