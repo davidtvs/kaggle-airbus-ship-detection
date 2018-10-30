@@ -5,6 +5,7 @@ from tqdm import tqdm
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import utils
 import metric
@@ -27,7 +28,9 @@ class Trainer:
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), lr=self.args.learning_rate
         )
-
+        self.lr_scheduler = ReduceLROnPlateau(
+            self.optimizer, patience=args.lr_patience, verbose=True
+        )
         self.metric = metric.Accuracy()
 
     def run_epoch(self, dataloader, epoch, is_training):
@@ -52,6 +55,8 @@ class Trainer:
             running_loss += step_loss
 
         epoch_loss = running_loss / len(dataloader.dataset)
+        if not is_training:
+            self.lr_scheduler.step(epoch_loss)
 
         return epoch_loss
 
@@ -177,7 +182,7 @@ if __name__ == "__main__":
         target_transform=target_transform,
     )
     val_loader = data.DataLoader(
-        valset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
+        valset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers
     )
     if args.dataset_info:
         utils.dataloader_info(val_loader)

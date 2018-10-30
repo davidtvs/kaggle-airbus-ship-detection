@@ -3,7 +3,9 @@ import errno
 import torch
 import torchvision
 import numpy as np
+import pandas as pd
 import matplotlib.pyplot as plt
+from data.utils import rle_encode
 
 
 def imshow_batch(images, targets=None):
@@ -107,3 +109,13 @@ def save_checkpoint(model, optimizer, metric, epoch, args):
         for arg in sorted_args:
             arg_str = "{0}: {1}\n".format(arg, getattr(args, arg))
             summary_file.write(arg_str)
+
+
+def make_submission(save_dir, image_ids, predictions):
+    rle = []
+    for pred in predictions:
+        rle.append(rle_encode(pred))
+
+    submission_df = pd.DataFrame({"ImageId": image_ids, "EncodedPixels": rle})
+    submission_path = os.path.join(save_dir, "submission.csv")
+    submission_df.to_csv(submission_path, index=False)

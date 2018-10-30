@@ -21,6 +21,15 @@ def get_arguments():
         default=0.001,
         help="The learning rate. Default: 0.001",
     )
+    parser.add_argument(
+        "--lr-patience",
+        type=int,
+        default=5,
+        help=(
+            "Number of epochs with no improvement after which learning rate will be"
+            "reduced. Default: 5"
+        ),
+    )
 
     # Dataset
     parser.add_argument(
