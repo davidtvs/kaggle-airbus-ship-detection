@@ -9,7 +9,7 @@ from .utils import rle_decode
 
 class AirbusShipDataset(Dataset):
     # Corrupted images to discard
-    corrupted = ["6384c3e78.jpg"]
+    corrupted = "6384c3e78.jpg"
 
     # Dataset directories
     train_dir = "train_v2"
@@ -42,9 +42,16 @@ class AirbusShipDataset(Dataset):
             rle_df = pd.read_csv(rle_path).set_index("ImageId")
 
             # Remove corrupted images
-            for name in self.corrupted:
-                train_names.remove(name)
-            rle_df.drop(index=self.corrupted, inplace=True)
+            try:
+                train_names.remove(self.corrupted)
+            except ValueError:
+                # If name is not in list ValueError is raised, ignore it
+                pass
+            try:
+                rle_df.drop(index=self.corrupted, inplace=True)
+            except KeyError:
+                # If name is not in list KeyError is raised, ignore it
+                pass
 
             # Split the dataset into training and validation
             # (shuffle must be false otherwise the order will not match the order of the
@@ -92,7 +99,6 @@ class AirbusShipDataset(Dataset):
             `numpy.ndarray` mask.
 
         """
-
         # Load image from disk
         img = Image.open(self.data[index])
 

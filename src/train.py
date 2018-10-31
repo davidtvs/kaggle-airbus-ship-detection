@@ -11,7 +11,7 @@ import utils
 import metric
 import models.net as models
 from early_stopping import EarlyStopping
-from args import get_arguments
+from args import get_train_args
 from data.airbus import AirbusShipDataset
 from transforms import TargetHasShipTensor
 
@@ -149,7 +149,7 @@ class Trainer:
 # Run only if this module is being run directly
 if __name__ == "__main__":
     # Get arguments from the command-line
-    args = get_arguments()
+    args = get_train_args()
 
     num_classes = 1
     input_dim = 224

@@ -1,10 +1,8 @@
 from argparse import ArgumentParser
 
 
-def get_arguments():
-    """Defines command-line arguments, and parses them.
-
-    """
+def get_train_args():
+    """Defines command-line arguments for training."""
     parser = ArgumentParser()
 
     # Hyperparameters
@@ -77,6 +75,43 @@ def get_arguments():
         type=str,
         default="checkpoints",
         help="The directory where models are saved. Default: checkpoints",
+    )
+
+    return parser.parse_args()
+
+
+def get_predict_args():
+    """Defines command-line arguments for predictions."""
+    parser = ArgumentParser()
+
+    parser.add_argument(
+        "--model-checkpoint", "-m", type=str, help="Path to the model checkpoint"
+    )
+    parser.add_argument(
+        "--batch-size", "-b", type=int, default=10, help="The batch size. Default: 10"
+    )
+    parser.add_argument(
+        "--dataset-dir",
+        type=str,
+        default="/media/davidtvs/Storage/Datasets/airbus-ship-detection/small",
+        help="Path to the root directory of the dataset",
+    )
+    parser.add_argument(
+        "--workers",
+        type=int,
+        default=4,
+        help="Number of subprocesses to use for data loading. Default: 4",
+    )
+    parser.add_argument(
+        "--device",
+        type=str,
+        default="cuda",
+        help="Device to use for computation. Default: cuda",
+    )
+    parser.add_argument(
+        "--dataset-info",
+        action="store_true",
+        help="Prints information about the datasets and shows a random batch of images",
     )
 
     return parser.parse_args()
