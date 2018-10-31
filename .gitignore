@@ -114,3 +114,6 @@ venv.bak/
 
 # Checkpoints
 checkpoints/
+
+# cProfile
+*.prof

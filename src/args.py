@@ -45,7 +45,7 @@ def get_arguments():
         "--dataset-dir",
         type=str,
         default="/media/davidtvs/Storage/Datasets/airbus-ship-detection/small",
-        help="Path to the root directory of the selected dataset",
+        help="Path to the root directory of the dataset",
     )
 
     # Settings
@@ -59,7 +59,7 @@ def get_arguments():
         "--device",
         type=str,
         default="cuda",
-        help="Device to use for computation. E.g. 'cuda' or 'cpu'",
+        help="Device to use for computation. Default: cuda",
     )
     parser.add_argument(
         "--dataset-info",
@@ -70,13 +70,13 @@ def get_arguments():
         "--model-name",
         type=str,
         default="model",
-        help="Name given to the model when saving. Default: ENet",
+        help="Name given to the model when saving. Default: model",
     )
     parser.add_argument(
         "--checkpoint-dir",
         type=str,
         default="checkpoints",
-        help="The directory where models are saved. Default: save",
+        help="The directory where models are saved. Default: checkpoints",
     )
 
     return parser.parse_args()

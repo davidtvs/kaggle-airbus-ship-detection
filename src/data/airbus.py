@@ -106,11 +106,16 @@ class AirbusShipDataset(Dataset):
         target = Image.fromarray(target)
 
         # Apply transforms if there are any
-        if self.transform:
-            img = self.transform(img)
+        # Applying transforms sometimes fails, to find out what images cause the error
+        # print the image name when an exception happens
+        try:
+            if self.transform:
+                img = self.transform(img)
 
-        if self.target_transform and target is not None:
-            target = self.target_transform(target)
+            if self.target_transform and target is not None:
+                target = self.target_transform(target)
+        except:
+            print("Image path:", self.data[index])
 
         return img, target
 
