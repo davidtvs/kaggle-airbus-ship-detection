@@ -8,6 +8,8 @@ from .utils import rle_decode
 
 
 class AirbusShipDataset(Dataset):
+    # Corrupted images to discard
+    corrupted = ["6384c3e78.jpg"]
 
     # Dataset directories
     train_dir = "train_v2"
@@ -39,6 +41,11 @@ class AirbusShipDataset(Dataset):
             rle_path = os.path.join(root_dir, self.rle_filename)
             rle_df = pd.read_csv(rle_path).set_index("ImageId")
 
+            # Remove corrupted images
+            for name in self.corrupted:
+                train_names.remove(name)
+            rle_df.drop(index=self.corrupted, inplace=True)
+
             # Split the dataset into training and validation
             # (shuffle must be false otherwise the order will not match the order of the
             # data frame)
@@ -52,9 +59,11 @@ class AirbusShipDataset(Dataset):
             val_target_df = rle_df.loc[val_names]
 
             if self.mode == "train":
+                # Training images and targets
                 self.data = [os.path.join(data_dir, f) for f in train_names]
                 self.target_df = train_target_df
             else:
+                # Validation images and targets
                 self.data = [
                     os.path.join(root_dir, self.train_dir, f) for f in val_names
                 ]
@@ -105,17 +114,11 @@ class AirbusShipDataset(Dataset):
 
         target = Image.fromarray(target)
 
-        # Apply transforms if there are any
-        # Applying transforms sometimes fails, to find out what images cause the error
-        # print the image name when an exception happens
-        try:
-            if self.transform:
-                img = self.transform(img)
+        if self.transform:
+            img = self.transform(img)
 
-            if self.target_transform and target is not None:
-                target = self.target_transform(target)
-        except:
-            print("Image path:", self.data[index])
+        if self.target_transform and target is not None:
+            target = self.target_transform(target)
 
         return img, target
 
