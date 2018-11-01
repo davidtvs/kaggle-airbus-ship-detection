@@ -24,8 +24,8 @@ def get_train_args():
         type=int,
         default=5,
         help=(
-            "Number of epochs with no improvement after which learning rate is reduced."
-            " Default: 5"
+            "Number of epochs with no improvement after which learning rate is "
+            "reduced. Default: 5"
         ),
     )
     parser.add_argument(
@@ -33,8 +33,8 @@ def get_train_args():
         type=int,
         default=5,
         help=(
-            "(Early stopping) Number of epochs with no improvement after which training"
-            " is stopped. Default: 20"
+            "(Early stopping) Number of epochs with no improvement after which "
+            "training is stopped. Default: 20"
         ),
     )
 
@@ -42,8 +42,27 @@ def get_train_args():
     parser.add_argument(
         "--dataset-dir",
         type=str,
-        default="/media/davidtvs/Storage/Datasets/airbus-ship-detection/small",
+        default="../dataset/",
         help="Path to the root directory of the dataset",
+    )
+    parser.add_argument(
+        "--val-split",
+        type=float,
+        default=0.15,
+        help=(
+            "The proportion of the dataset to include in the validation split. "
+            "Default: 0.15."
+        ),
+    )
+    parser.add_argument(
+        "--slice-factor",
+        type=float,
+        default=1.0,
+        help=(
+            "Slice factor to apply to the dataset, e.g., when set to 0.2, the first "
+            "20%% of the dataset is sliced for use, the remaining data is discarded. "
+            "Default: 1.0."
+        ),
     )
 
     # Settings

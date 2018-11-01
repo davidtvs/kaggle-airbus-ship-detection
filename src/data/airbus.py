@@ -8,10 +8,10 @@ from .utils import rle_decode
 
 
 class AirbusShipDataset(Dataset):
-    # Corrupted images to discard
-    corrupted = "6384c3e78.jpg"
+    # Corrupted train images to discard
+    train_corrupted = ["6384c3e78.jpg"]
 
-    # Dataset directories
+    # data_pathset directories
     train_dir = "train_v2"
     test_dir = "test_v2"
 
@@ -24,8 +24,9 @@ class AirbusShipDataset(Dataset):
         mode="train",
         transform=None,
         target_transform=None,
+        train_val_split=0.2,
+        data_slice=None,
         random_state=None,
-        val_split_size=0.2,
     ):
         self.root_dir = root_dir
         self.mode = mode.lower()
@@ -33,66 +34,61 @@ class AirbusShipDataset(Dataset):
         self.target_transform = target_transform
 
         if self.mode in ("train", "val"):
-            # Get the list of images from the training set
-            data_dir = os.path.join(root_dir, self.train_dir)
-            train_names = os.listdir(data_dir)
 
             # Read CSV with run-length encoding
             rle_path = os.path.join(root_dir, self.rle_filename)
             rle_df = pd.read_csv(rle_path).set_index("ImageId")
 
-            # Remove corrupted images
-            try:
-                train_names.remove(self.corrupted)
-            except ValueError:
-                # If name is not in list ValueError is raised, ignore it
-                pass
-            try:
-                rle_df.drop(index=self.corrupted, inplace=True)
-            except KeyError:
-                # If name is not in list KeyError is raised, ignore it
-                pass
+            # Remove the corrupted images
+            rle_df.drop(index=self.train_corrupted, inplace=True, errors="ignore")
 
-            # Split the dataset into training and validation
-            # (shuffle must be false otherwise the order will not match the order of the
-            # data frame)
-            train_names, val_names = train_test_split(
-                train_names,
-                test_size=val_split_size,
+            # Get list of images in the training set. Unique gets rid of the duplicated
+            # entries of images with more than one ship
+            data_names = rle_df.index.unique().tolist()
+            if data_slice:
+                data_names = self._slice(data_names, data_slice)
+
+            # Split the data_pathset into training and validation
+            data_names, val_names = train_test_split(
+                data_names,
+                test_size=train_val_split,
                 shuffle=False,
                 random_state=random_state,
             )
-            train_target_df = rle_df.loc[train_names]
+            train_target_df = rle_df.loc[data_names]
             val_target_df = rle_df.loc[val_names]
+
+            data_dir = os.path.join(root_dir, self.train_dir)
 
             if self.mode == "train":
                 # Training images and targets
-                self.data = [os.path.join(data_dir, f) for f in train_names]
+                self.data_path = [os.path.join(data_dir, f) for f in data_names]
                 self.target_df = train_target_df
             else:
                 # Validation images and targets
-                self.data = [
-                    os.path.join(root_dir, self.train_dir, f) for f in val_names
-                ]
+                self.data_path = [os.path.join(data_dir, f) for f in val_names]
                 self.target_df = val_target_df
 
         elif self.mode == "test":
             # Get the list of images from the test set
             data_dir = os.path.join(root_dir, self.test_dir)
-            self.data = [os.path.join(data_dir, f) for f in os.listdir(data_dir)]
+            data_names = os.listdir(data_dir)
+            if data_slice:
+                data_names = self._slice(data_names, data_slice)
+            self.data_path = [os.path.join(data_dir, f) for f in data_names]
 
             # The test set ground-truth is not public
             self.target_df = None
         else:
             raise RuntimeError(
-                "Unexpected dataset mode. Supported modes are: train, val and test"
+                "Unexpected data_pathset mode. Supported modes are: train, val and test"
             )
 
     def __getitem__(self, index):
-        """Gets a sample and target pair from the dataset.
+        """Gets a sample and target pair from the data_pathset.
 
         Arguments:
-            index (int): index of the item in the dataset
+            index (int): index of the item in the data_pathset
 
         Returns:
             tuple: (image, target) where `image` is a `PIL.Image` and `target` is a
@@ -100,14 +96,14 @@ class AirbusShipDataset(Dataset):
 
         """
         # Load image from disk
-        img = Image.open(self.data[index])
+        img = Image.open(self.data_path[index])
 
         # Create the target from the run-length encoding
         target = np.zeros(img.size)
         if self.target_df is not None:
             # Get the RLE code by selecting all rows with the image filename
             rle_code = self.target_df.loc[
-                os.path.basename(self.data[index])
+                os.path.basename(self.data_path[index])
             ].values.flatten()
             if len(rle_code) > 1:
                 rle = " ".join(rle_code)
@@ -129,5 +125,16 @@ class AirbusShipDataset(Dataset):
         return img, target
 
     def __len__(self):
-        """Returns the length of the dataset."""
-        return len(self.data)
+        """Returns the length of the data_pathset."""
+        return len(self.data_path)
+
+    def _slice(self, x, slice_size):
+        """Returns a slice of the specified list."""
+        if isinstance(slice_size, int):
+            pass
+        elif isinstance(slice_size, float):
+            slice_size = int(len(x) * slice_size)
+        else:
+            raise TypeError("slice_size must be an int or a float")
+
+        return x[:slice_size]

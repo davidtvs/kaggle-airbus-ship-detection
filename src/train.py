@@ -170,6 +170,9 @@ if __name__ == "__main__":
         mode="train",
         transform=image_transform,
         target_transform=target_transform,
+        train_val_split=args.val_split,
+        data_slice=args.slice_factor,
+        random_state=23,
     )
     train_loader = data.DataLoader(
         trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
@@ -184,6 +187,9 @@ if __name__ == "__main__":
         mode="val",
         transform=image_transform,
         target_transform=target_transform,
+        train_val_split=args.val_split,
+        data_slice=args.slice_factor,
+        random_state=23,
     )
     val_loader = data.DataLoader(
         valset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers

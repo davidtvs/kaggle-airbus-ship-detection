@@ -117,3 +117,6 @@ checkpoints/
 
 # cProfile
 *.prof
+
+# Dataset folder
+dataset/

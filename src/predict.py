@@ -18,6 +18,7 @@ def predict(model, dataloader, device):
     since = time.time()
     predictions = []
     for step, (images, _) in enumerate(tqdm(dataloader)):
+        utils.imshow_batch(images)
         images = images.to(device)
         logits = model(images)
 
