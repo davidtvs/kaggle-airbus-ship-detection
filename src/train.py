@@ -30,9 +30,14 @@ class Trainer:
         self.optimizer = torch.optim.Adam(
             self.model.parameters(), lr=self.args.learning_rate
         )
-        self.lr_scheduler = ReduceLROnPlateau(self.optimizer, patience=args.lr_patience)
-        self.early_stopping = EarlyStopping(self, patience=args.stop_patience)
-        self.metric = metric.Accuracy()
+        self.lr_scheduler = ReduceLROnPlateau(
+            self.optimizer, patience=args.lr_patience, mode="max"
+        )
+        self.early_stopping = EarlyStopping(
+            self, patience=args.stop_patience, mode="max"
+        )
+        self.metrics = {"acc": metric.Accuracy()}
+        self.main_metric_key = "acc"
 
     def run_epoch(self, dataloader, epoch, is_training):
         # Set model to training mode if training; otherwise, set it to evaluation mode
@@ -43,7 +48,7 @@ class Trainer:
 
         # Initialize running metrics
         running_loss = 0.0
-        self.metric.reset()
+        self._metrics_reset()
 
         # Iterate over data.
         for step, (inputs, targets) in enumerate(tqdm(dataloader)):
@@ -58,8 +63,9 @@ class Trainer:
         epoch_loss = running_loss / len(dataloader.dataset)
 
         if not is_training:
-            self.lr_scheduler.step(epoch_loss)
-            self.early_stopping.step(epoch_loss)
+            metric_val = self.metrics[self.main_metric_key].value()
+            self.lr_scheduler.step(metric_val)
+            self.early_stopping.step(metric_val)
 
         return epoch_loss
 
@@ -83,7 +89,7 @@ class Trainer:
 
         # Statistics
         loss = loss.item() * inputs.size(0)
-        self.metric.add(preds, targets)
+        self._metrics_update(preds.squeeze_(), targets.squeeze_())
 
         return loss
 
@@ -91,41 +97,39 @@ class Trainer:
         # Get the current time to know how much time it took to train the model
         since = time.time()
 
-        val_acc_history = []
-        best_acc = 0.0
+        val_metrics_history = []
+        best_metric_val = 0.0
         best_model = copy.deepcopy(self.model.state_dict())
 
         # Save the model (mostly to find out if the saving process succeeds)
-        utils.save_checkpoint(self.model, self.optimizer, best_acc, 0, self.args)
+        utils.save_checkpoint(self.model, self.optimizer, best_metric_val, 0, self.args)
 
         # Start training the model
         for epoch in range(self.args.epochs):
             print("Epoch {}/{}".format(epoch, self.args.epochs - 1))
             print("-" * 80)
 
+            print("Training")
             epoch_loss = self.run_epoch(train_dataloader, epoch, is_training=True)
-            print(
-                "Training - Loss: {:.4f} Metric: {:.4f}".format(
-                    epoch_loss, self.metric.value()
-                )
-            )
+            print("Loss: {:.4f}".format(epoch_loss))
+            print("Metrics:", self._metrics_str())
 
+            print()
+            print("Validation")
             epoch_loss = self.run_epoch(val_dataloader, epoch, is_training=False)
-            print(
-                "Validation - Loss: {:.4f} Metric: {:.4f}".format(
-                    epoch_loss, self.metric.value()
-                )
-            )
+            print("Loss: {:.4f}".format(epoch_loss))
+            print("Metrics:", self._metrics_str())
 
             # Deep copy the model
-            if self.metric.value() > best_acc:
-                best_acc = self.metric.value()
+            curr_metric_val = self.metrics[self.main_metric_key].value()
+            if curr_metric_val > best_metric_val:
+                best_metric_val = curr_metric_val
                 best_model = copy.deepcopy(self.model.state_dict())
                 utils.save_checkpoint(
-                    self.model, self.optimizer, epoch, best_acc, self.args
+                    self.model, self.optimizer, epoch, best_metric_val, self.args
                 )
 
-            val_acc_history.append(self.metric.value())
+            val_metrics_history.append(self.metrics)
             print()
 
             # Check if we have to stop early
@@ -139,11 +143,35 @@ class Trainer:
                 time_elapsed // 60, time_elapsed % 60
             )
         )
-        print("Best validation metric: {:4f}".format(best_acc))
+        print("Best validation metric: {:.4f}".format(best_metric_val))
 
         # Load the best model weights
         self.model.load_state_dict(best_model)
-        return self.model, val_acc_history
+        return self.model, val_metrics_history
+
+    def _metrics_str(self):
+        if not isinstance(self.metrics, dict):
+            raise TypeError("expect type 'dict' for 'metrics'")
+
+        str_list = [
+            "{0}: {1:.4f}".format(key, self.metrics[key].value())
+            for key in self.metrics
+        ]
+        return " - ".join(str_list)
+
+    def _metrics_reset(self):
+        if not isinstance(self.metrics, dict):
+            raise TypeError("expect type 'dict' for 'metrics'")
+
+        for key in self.metrics:
+            self.metrics[key].reset()
+
+    def _metrics_update(self, prediction, target):
+        if not isinstance(self.metrics, dict):
+            raise TypeError("expect type 'dict' for 'metrics'")
+
+        for key in self.metrics:
+            self.metrics[key].add(prediction, target)
 
 
 # Run only if this module is being run directly
