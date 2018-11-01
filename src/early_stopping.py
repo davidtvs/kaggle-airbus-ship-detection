@@ -1,5 +1,4 @@
 import numpy as np
-from functools import partial
 
 
 class EarlyStopping(object):
@@ -26,26 +25,22 @@ class EarlyStopping(object):
         self.trainer = trainer
         self.mode = mode
         self.patience = patience
-        self.threshold = threshold
-        self.is_better = partial(self._cmp, mode, threshold)
+        self.num_bad_epochs = 0
         if mode == "min":
             self.best = np.inf
+            self.threshold = -threshold
+            self.cmp_op = np.less
         else:
             self.best = -np.inf
-        self.num_bad_epochs = 0
+            self.threshold = threshold
+            self.cmp_op = np.greater
 
     def step(self, metrics):
         current = metrics
-        if self.is_better(current, self.best):
+        if self.cmp_op(current - self.threshold, self.best):
             self.best = current
             self.num_bad_epochs = 0
         else:
             self.num_bad_epochs += 1
             if self.num_bad_epochs > self.patience:
                 self.trainer.stop = True
-
-    def _cmp(self, mode, threshold, value, target):
-        if mode == "min":
-            return value < target - threshold
-        else:
-            return value > target + threshold
