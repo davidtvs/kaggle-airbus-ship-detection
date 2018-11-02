@@ -3,7 +3,7 @@ import torch.nn as nn
 import torchvision.models as models
 
 
-def resnet_snsnet(
+def resnet(
     num_layers,
     num_classes,
     feature_extraction=False,

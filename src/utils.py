@@ -8,113 +8,11 @@ import matplotlib.pyplot as plt
 from data.utils import rle_encode
 
 
-class EarlyStopping(object):
-    """Stop training when a metric has stopped improving.
-
-    Arguments:
-        trainer (Trainer): Instance of the Trainer class.
-        mode (str): One of `min`, `max`. In `min` mode, the trainer is stopped when the
-            quantity monitored has stopped decreasing; in `max` mode it will be stopped
-            when the quantity monitored has stopped increasing. Default: 'min'.
-        patience (int): Number of epochs with no improvement after which the training
-            is stopped. For example, if `patience = 2`, the first 2 epochs with no
-            improvement are ignored; on the 3rd epoch without improvement the trainer
-            is stopped. Default: 20.
-        threshold (float): Improvements are only considered as improvements when it
-            exceeds the `threshold`. Default: 1e-4.
-
-        """
-
-    def __init__(self, trainer, mode="min", patience=20, threshold=1e-4):
-        if mode not in {"min", "max"}:
-            raise ValueError("mode " + mode + " is unknown!")
-
-        self.trainer = trainer
-        self.mode = mode
-        self.patience = patience
-        self.num_bad_epochs = 0
-        if mode == "min":
-            self.best = np.inf
-            self.threshold = -threshold
-            self.cmp_op = np.less
-        else:
-            self.best = -np.inf
-            self.threshold = threshold
-            self.cmp_op = np.greater
-
-    def step(self, metric):
-        """Stops training if the metric has not improved and exceeded `patience`.
-
-        Arguments:
-            metric (metric.Metric): quantity to monitor.
-
-        """
-        if self.cmp_op(metric - self.threshold, self.best):
-            self.best = metric
-            self.num_bad_epochs = 0
-        else:
-            self.num_bad_epochs += 1
-            if self.num_bad_epochs > self.patience:
-                self.trainer.stop = True
-
-
-class ModelCheckpoint(object):
-    """Save the model after epoch.
-
-    Arguments:
-        trainer (Trainer): Instance of the Trainer class.
-        filepath (str): path to the location where the model will be saved
-        mode (str): One of `min`, `max`. In `min` mode, the checkpoint is saved when the
-            quantity monitored reaches a new minimum; in `max` mode it will be saved
-            when the quantity monitored reaches a new maximum. Default: 'min'.
-        threshold (float): Improvements are only considered as improvements when it
-            exceeds the `threshold`. Default: 1e-4.
-
-    """
-
-    def __init__(self, trainer, filepath, mode="min", threshold=1e-4):
-        if mode not in {"min", "max"}:
-            raise ValueError("mode " + mode + " is unknown!")
-
-        self.filepath = filepath
-        self.trainer = trainer
-        self.mode = mode
-        if mode == "min":
-            self.best = np.inf
-            self.threshold = -threshold
-            self.cmp_op = np.less
-        else:
-            self.best = -np.inf
-            self.threshold = threshold
-            self.cmp_op = np.greater
-
-    def step(self, metric):
-        """Saves the model if the specified metric improved.
-
-        Arguments:
-            metric (metric.Metric): quantity to monitor.
-
-        """
-        if self.cmp_op(metric - self.threshold, self.best):
-            self.best = metric
-            save_checkpoint(
-                self.filepath,
-                self.trainer.epoch,
-                self.trainer.model,
-                self.trainer.optimizer,
-                self.trainer.losses,
-                self.trainer.metrics,
-                self.trainer.args,
-            )
-
-
-def save_checkpoint(filepath, epoch, model, optimizer, losses, metrics, args):
+def save_summary(filepath, losses, metrics, args):
     """Saves the model in a specified directory with a specified name.save
 
     Arguments:
-        epoch (int): the current epoch.
-        model (torch.nn.Module): the model to save.
-        optimizer (torch.optim): the model optimizer.
+        filepath (str): path to the location where the model will be saved
         losses (dict): a dictionary of losses.
         metrics (dict): a dictionary of metrics.
         args (ArgumentParser): the command-line arguments.
@@ -129,37 +27,24 @@ def save_checkpoint(filepath, epoch, model, optimizer, losses, metrics, args):
             raise
         pass
 
-    # Save model
-    checkpoint = {
-        "epoch": epoch,
-        "model": model.state_dict(),
-        "optimizer": optimizer.state_dict(),
-        "losses": losses,
-        "metrics": metrics,
-        "args": args,
-    }
-    torch.save(checkpoint, filepath)
-
     # Save arguments
-    summary_filename = os.path.join(checkpoint_dir, "summary.txt")
-    with open(summary_filename, "w") as summary_file:
+    with open(filepath, "w") as summary_file:
         # Write arguments
         summary_file.write("Arguments\n")
-        sorted_args = sorted(vars(args))
-        for arg in sorted_args:
-            arg_str = "{0}: {1}\n".format(arg, getattr(args, arg))
-            summary_file.write(arg_str)
+        str_list = ["{0}: {1}".format(arg, getattr(args, arg)) for arg in args]
+        str_list = sorted(str_list)
+        summary_file.write("\n".join(str_list))
         summary_file.write("\n")
 
         # Write losses
-        summary_file.write("Losses\n")
+        summary_file.write("\nLosses\n")
         str_list = ["{0}: {1}".format(key, losses[key]) for key in losses]
         str_list = sorted(str_list)
         summary_file.write("\n".join(str_list))
         summary_file.write("\n")
 
         # Write metrics
-        summary_file.write("Metrics\n")
+        summary_file.write("\nMetrics\n")
         str_list = ["{0}: {1}".format(key, metrics[key].value()) for key in metrics]
         str_list = sorted(str_list)
         summary_file.write("\n".join(str_list))
@@ -176,8 +61,8 @@ def imshow_batch(images, targets=None):
 
     """
     if not isinstance(images, torch.Tensor) or images.dim() != 4:
-        raise RuntimeError(
-            "Expected '{0}', got '{1}'".format(type(torch.Tensor), type(images))
+        raise ValueError(
+            "expected '{0}', got '{1}'".format(type(torch.Tensor), type(images))
         )
 
     # Make a grid with the images
