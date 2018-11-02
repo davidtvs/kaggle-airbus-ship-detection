@@ -45,4 +45,8 @@ class Accuracy(metric.Metric):
         Returns:
             float: The accuracy.
         """
-        return self.correct_pred / self.total
+        # Just in case we get a division by 0, ignore/hide the error
+        with np.errstate(divide="ignore", invalid="ignore"):
+            res = np.divide(self.correct_pred, self.total)
+
+        return res

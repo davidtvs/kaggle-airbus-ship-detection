@@ -1,5 +1,5 @@
 import time
-import copy
+import os
 from tqdm import tqdm
 
 import torch
@@ -10,7 +10,6 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 import utils
 import metric
 import models.net as models
-from early_stopping import EarlyStopping
 from args import get_train_args
 from data.airbus import AirbusShipDataset
 from transforms import TargetHasShipTensor
@@ -19,9 +18,17 @@ from transforms import TargetHasShipTensor
 class Trainer:
     def __init__(self, model, args):
         self.args = args
+        self.checkpoint_path = os.path.join(
+            args.checkpoint_dir, args.model_name, args.model_name + ".pth"
+        )
         self.stop = False
         self.device = torch.device(self.args.device)
         self.model = model.to(self.device)
+        self.epoch = 0
+        self.num_epochs = args.epochs
+        self.metrics = {"acc": metric.Accuracy()}
+        self.main_metric_key = "acc"
+        self.losses = {"train": 0, "val": 0}
 
         # Loss function: binary cross entropy with logits. Expects logits therefore the
         # output layer must return a logits instead of probabilities
@@ -31,15 +38,14 @@ class Trainer:
             self.model.parameters(), lr=self.args.learning_rate
         )
         self.lr_scheduler = ReduceLROnPlateau(
-            self.optimizer, patience=args.lr_patience, mode="max"
+            self.optimizer, patience=args.lr_patience, mode="max", verbose=True
         )
-        self.early_stopping = EarlyStopping(
+        self.early_stopping = utils.EarlyStopping(
             self, patience=args.stop_patience, mode="max"
         )
-        self.metrics = {"acc": metric.Accuracy()}
-        self.main_metric_key = "acc"
+        self.checkpoint = utils.ModelCheckpoint(self, self.checkpoint_path, mode="max")
 
-    def run_epoch(self, dataloader, epoch, is_training):
+    def run_epoch(self, dataloader, is_training):
         # Set model to training mode if training; otherwise, set it to evaluation mode
         if is_training:
             self.model.train()
@@ -66,6 +72,7 @@ class Trainer:
             metric_val = self.metrics[self.main_metric_key].value()
             self.lr_scheduler.step(metric_val)
             self.early_stopping.step(metric_val)
+            self.checkpoint.step(metric_val)
 
         return epoch_loss
 
@@ -97,45 +104,37 @@ class Trainer:
         # Get the current time to know how much time it took to train the model
         since = time.time()
 
-        val_metrics_history = []
-        best_metric_val = 0.0
-        best_model = copy.deepcopy(self.model.state_dict())
-
-        # Save the model (mostly to find out if the saving process succeeds)
-        utils.save_checkpoint(self.model, self.optimizer, best_metric_val, 0, self.args)
-
         # Start training the model
-        for epoch in range(self.args.epochs):
-            print("Epoch {}/{}".format(epoch, self.args.epochs - 1))
+        for self.epoch in range(self.num_epochs):
+            print("Epoch {}/{}".format(self.epoch, self.args.epochs - 1))
             print("-" * 80)
 
             print("Training")
-            epoch_loss = self.run_epoch(train_dataloader, epoch, is_training=True)
-            print("Loss: {:.4f}".format(epoch_loss))
-            print("Metrics:", self._metrics_str())
-
+            self.losses["train"] = self.run_epoch(train_dataloader, is_training=True)
+            print("Loss - {:.4f}".format(self.losses["train"]))
+            print("Metrics - {}".format(self._metrics_str()))
             print()
+
             print("Validation")
-            epoch_loss = self.run_epoch(val_dataloader, epoch, is_training=False)
-            print("Loss: {:.4f}".format(epoch_loss))
-            print("Metrics:", self._metrics_str())
-
-            # Deep copy the model
-            curr_metric_val = self.metrics[self.main_metric_key].value()
-            if curr_metric_val > best_metric_val:
-                best_metric_val = curr_metric_val
-                best_model = copy.deepcopy(self.model.state_dict())
-                utils.save_checkpoint(
-                    self.model, self.optimizer, epoch, best_metric_val, self.args
-                )
-
-            val_metrics_history.append(self.metrics)
+            self.losses["val"] = self.run_epoch(val_dataloader, is_training=False)
+            print("Loss - {:.4f}".format(self.losses["val"]))
+            print("Metrics - {}".format(self._metrics_str()))
             print()
 
             # Check if we have to stop early
             if self.stop:
-                print("Epoch {}: early stopping".format(epoch))
+                print("Epoch {}: early stopping".format(self.epoch))
                 break
+
+        # Load the best model weights
+        checkpoint = torch.load(self.checkpoint_path)
+        self.model.load_state_dict(checkpoint["model"])
+        self.metrics = checkpoint["metrics"]
+        self.losses = checkpoint["losses"]
+        print("-" * 80)
+        print()
+        print("Best validation score in epoch {}".format(self.epoch))
+        print("Metrics - {}".format(self._metrics_str()))
 
         time_elapsed = time.time() - since
         print(
@@ -143,11 +142,9 @@ class Trainer:
                 time_elapsed // 60, time_elapsed % 60
             )
         )
-        print("Best validation metric: {:.4f}".format(best_metric_val))
+        print()
 
-        # Load the best model weights
-        self.model.load_state_dict(best_model)
-        return self.model, val_metrics_history
+        return self.model
 
     def _metrics_str(self):
         if not isinstance(self.metrics, dict):

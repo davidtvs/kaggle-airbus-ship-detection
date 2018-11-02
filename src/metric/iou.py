@@ -70,14 +70,21 @@ class IoU(metric.Metric):
         self.conf_metric.add(predicted.view(-1), target.view(-1))
 
     def value(self):
-        """Computes the IoU and mean IoU.
+        """Computes the mean IoU.
 
-        The mean computation ignores NaN elements of the IoU array.
+        The mean computation ignores NaN elements in the IoU array.
 
         Returns:
-            Tuple: (IoU, mIoU). The first output is the per class IoU, for K classes
-            it's numpy.ndarray with K elements. The second output,
-            is the mean IoU.
+            float: the mean IoU.
+        """
+        return np.nanmean(self.class_iou())
+
+    def class_iou(self):
+        """Computes the IoU per class.
+
+        Returns:
+            numpy.ndarray: An array where each element corresponds to the IoU of that
+            class.
         """
         conf_matrix = self.conf_metric.value()
         if self.ignore_index is not None:
@@ -92,4 +99,4 @@ class IoU(metric.Metric):
         with np.errstate(divide="ignore", invalid="ignore"):
             iou = true_positive / (true_positive + false_positive + false_negative)
 
-        return iou, np.nanmean(iou)
+        return iou
