@@ -1,0 +1,18 @@
+{
+    "batch_size": 128,
+    "checkpoint_dir": "checkpoints",
+    "dataset_dir": "../dataset/",
+    "dataset_info": false,
+    "device": "cuda",
+    "epochs": 20,
+    "img_h": 224,
+    "img_w": 224,
+    "lr_patience": 2,
+    "lr_rate": 0.001,
+    "model_name": "model",
+    "resnet_size": 34,
+    "slice_factor": 0.0025,
+    "stop_patience": 5,
+    "val_split": 0.15,
+    "workers": 4
+}

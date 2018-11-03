@@ -7,7 +7,7 @@ import utils
 from tqdm import tqdm
 from args import get_predict_args
 from data.airbus import AirbusShipDataset
-import models.net as models
+import models.ship_noship as sns
 
 
 def predict(model, dataloader, device):
@@ -18,7 +18,6 @@ def predict(model, dataloader, device):
     since = time.time()
     predictions = []
     for step, (images, _) in enumerate(tqdm(dataloader)):
-        utils.imshow_batch(images)
         images = images.to(device)
         logits = model(images)
 
@@ -37,16 +36,18 @@ def predict(model, dataloader, device):
 
 
 if __name__ == "__main__":
-    # Get arguments from the command-line
+    # Get arguments from the command-line and json configuration
     args = get_predict_args()
-
-    if args.model_checkpoint is None:
-        raise ValueError("specify a model checkpoint with --model-checkpoint or -m")
-    if not os.path.isfile(args.model_checkpoint):
-        raise ValueError("the model checkpoint doesn't exist")
+    config = utils.load_config(args.config)
 
     num_classes = 1
-    input_dim = 224
+    input_dim = (config["img_h"], config["img_w"])
+    checkpoint_path = config["model_checkpoint"]
+
+    if checkpoint_path is None:
+        raise ValueError("model checkpoint hasn't been specified")
+    if not os.path.isfile(checkpoint_path):
+        raise ValueError("the model checkpoint doesn't exist")
 
     # Compose the image transforms to be applied to the data
     image_transform = transforms.Compose(
@@ -59,28 +60,28 @@ if __name__ == "__main__":
     # Initialize the dataset in test mode
     print("Loading training dataset...")
     testset = AirbusShipDataset(
-        args.dataset_dir,
+        config["dataset_dir"],
         mode="test",
         transform=image_transform,
         target_transform=target_transform,
     )
     test_loader = data.DataLoader(
-        testset, batch_size=args.batch_size, num_workers=args.workers
+        testset, batch_size=config["batch_size"], num_workers=config["workers"]
     )
-    if args.dataset_info:
+    if config["dataset_info"]:
         utils.dataloader_info(test_loader)
 
     # Initialize ship or no-ship detection network and then laod the weigths
     print()
     print("Loading ship detection model...")
-    snsnet = models.resnet_snsnet(34, num_classes)
+    snsnet = sns.resnet(config["resnet_size"], num_classes)
     print(snsnet)
 
     print()
-    print("Loading model weights from {}...".format(args.model_checkpoint))
-    checkpoint = torch.load(args.model_checkpoint)
-    snsnet.load_state_dict(checkpoint["state_dict"])
+    print("Loading model weights from {}...".format(checkpoint_path))
+    checkpoint = torch.load(checkpoint_path)
+    snsnet.load_state_dict(checkpoint["model"])
 
     print()
     print("Generating predictions...")
-    predictions = predict(snsnet, test_loader, args.device)
+    predictions = predict(snsnet, test_loader, config["device"])

@@ -9,14 +9,26 @@ import matplotlib.pyplot as plt
 from data.utils import rle_encode
 
 
-def save_summary(filepath, args, losses, metrics):
+def save_config(filepath, config):
+    with open(filepath, "w") as outfile:
+        json.dump(config, outfile, indent=4, sort_keys=True)
+
+
+def load_config(filepath):
+    with open(filepath, "r") as infile:
+        config = json.load(infile)
+
+    return config
+
+
+def save_summary(filepath, config, losses, metrics):
     """Saves the model in a specified directory with a specified name.save
 
     Arguments:
         filepath (str): path to the location where the model will be saved
+        config (dict): a dictionary with the configuration used for training.
         losses (dict): a dictionary of losses.
         metrics (dict): a dictionary of metrics.
-        args (ArgumentParser): the command-line arguments.
 
     """
     # Create the directory for the checkpoint in case it doesn't exist
@@ -29,7 +41,7 @@ def save_summary(filepath, args, losses, metrics):
         pass
 
     metrics_dict = {m.name: m.value() for m in metrics}
-    out = {"args": vars(args), "losses": losses, "metrics": metrics_dict}
+    out = {"config": config, "losses": losses, "metrics": metrics_dict}
     with open(filepath, "w") as summary_file:
         json.dump(out, summary_file, indent=4, sort_keys=True)
 

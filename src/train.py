@@ -14,11 +14,12 @@ from data.airbus import AirbusShipDataset
 
 # Run only if this module is being run directly
 if __name__ == "__main__":
-    # Get arguments from the command-line
+    # Get arguments from the command-line and json configuration
     args = get_train_args()
+    config = utils.load_config(args.config)
 
     num_classes = 1
-    input_dim = 224
+    input_dim = (config["img_h"], config["img_w"])
 
     # Compose the image transforms to be applied to the data
     image_transform = tf.Compose([tf.Resize(input_dim), tf.ToTensor()])
@@ -28,61 +29,67 @@ if __name__ == "__main__":
     # Initialize the datasets and dataloaders
     print("Loading training dataset...")
     trainset = AirbusShipDataset(
-        args.dataset_dir,
+        config["dataset_dir"],
         mode="train",
         transform=image_transform,
         target_transform=target_transform,
-        train_val_split=args.val_split,
-        data_slice=args.slice_factor,
+        train_val_split=config["val_split"],
+        data_slice=config["slice_factor"],
         random_state=23,
     )
     train_loader = data.DataLoader(
-        trainset, batch_size=args.batch_size, shuffle=True, num_workers=args.workers
+        trainset,
+        batch_size=config["batch_size"],
+        shuffle=True,
+        num_workers=config["workers"],
     )
-    if args.dataset_info:
+    if config["dataset_info"]:
         utils.dataloader_info(train_loader)
 
     print()
     print("Loading validation dataset...")
     valset = AirbusShipDataset(
-        args.dataset_dir,
+        config["dataset_dir"],
         mode="val",
         transform=image_transform,
         target_transform=target_transform,
-        train_val_split=args.val_split,
-        data_slice=args.slice_factor,
+        train_val_split=config["val_split"],
+        data_slice=config["slice_factor"],
         random_state=23,
     )
     val_loader = data.DataLoader(
-        valset, batch_size=args.batch_size, shuffle=False, num_workers=args.workers
+        valset,
+        batch_size=config["batch_size"],
+        shuffle=False,
+        num_workers=config["workers"],
     )
-    if args.dataset_info:
+    if config["dataset_info"]:
         utils.dataloader_info(val_loader)
 
     # Initialize ship or no-ship detection network
     print()
     print("Loading ship detection model...")
-    snsnet = sns.resnet(34, num_classes)
+    snsnet = sns.resnet(config["resnet_size"], num_classes)
 
     # Loss function: binary cross entropy with logits. Expects logits therefore the
     # output layer must return a logits instead of probabilities
     criterion = torch.nn.BCEWithLogitsLoss()
 
     # Optimizer with learning rate scheduling
-    optimizer = torch.optim.Adam(snsnet.parameters(), lr=args.learning_rate)
+    optimizer = torch.optim.Adam(snsnet.parameters(), lr=config["lr_rate"])
     lr_scheduler = ReduceLROnPlateau(
-        optimizer, mode="max", patience=args.lr_patience, verbose=True
+        optimizer, mode="max", patience=config["lr_patience"], verbose=True
     )
 
     # Save a checkpoint after an epoch with better score
-    checkpoint_dir = os.path.join(args.checkpoint_dir, args.model_name)
-    checkpoint_path = os.path.join(checkpoint_dir, args.model_name + ".pth")
+    checkpoint_dir = os.path.join(config["checkpoint_dir"], config["model_name"])
+    checkpoint_path = os.path.join(checkpoint_dir, config["model_name"] + ".pth")
     model_checkpoint = ModelCheckpoint(checkpoint_path, mode="max")
 
     # Metrics: accuracy. The validation accuracy is the quantity monitored in
     # lr_scheduler, early_stopping, and model_checkpoint
     metrics = metric.MetricList([metric.Accuracy()])
-    early_stopping = EarlyStopping(mode="max", patience=args.stop_patience)
+    early_stopping = EarlyStopping(mode="max", patience=config["stop_patience"])
 
     # Train the model
     print()
@@ -91,14 +98,18 @@ if __name__ == "__main__":
         optimizer,
         criterion,
         metrics,
-        args.epochs,
+        config["epochs"],
         lr_scheduler=lr_scheduler,
         early_stop=early_stopping,
         model_checkpoint=model_checkpoint,
-        device=args.device,
+        device=config["device"],
     )
     snsnet, checkpoint = train.fit(train_loader, val_loader)
 
     # Save a summary file containing the args, losses, and metrics
+    config_path = os.path.join(checkpoint_dir, os.path.basename(args.config))
+    utils.save_config(config_path, config)
     summary_path = os.path.join(checkpoint_dir, "summary.json")
-    utils.save_summary(summary_path, args, checkpoint["losses"], checkpoint["metrics"])
+    utils.save_summary(
+        summary_path, config, checkpoint["losses"], checkpoint["metrics"]
+    )
