@@ -75,9 +75,8 @@ if __name__ == "__main__":
     )
 
     # Save a checkpoint after an epoch with better score
-    checkpoint_path = os.path.join(
-        args.checkpoint_dir, args.model_name, args.model_name + ".pth"
-    )
+    checkpoint_dir = os.path.join(args.checkpoint_dir, args.model_name)
+    checkpoint_path = os.path.join(checkpoint_dir, args.model_name + ".pth")
     model_checkpoint = ModelCheckpoint(checkpoint_path, mode="max")
 
     # Metrics: accuracy. The validation accuracy is the quantity monitored in
@@ -98,4 +97,8 @@ if __name__ == "__main__":
         model_checkpoint=model_checkpoint,
         device=args.device,
     )
-    train.fit(train_loader, val_loader)
+    snsnet, checkpoint = train.fit(train_loader, val_loader)
+
+    # Save a summary file containing the args, losses, and metrics
+    summary_path = os.path.join(checkpoint_dir, "summary.json")
+    utils.save_summary(summary_path, args, checkpoint["losses"], checkpoint["metrics"])

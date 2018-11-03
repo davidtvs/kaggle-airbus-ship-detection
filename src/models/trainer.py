@@ -70,11 +70,11 @@ class Trainer:
                 break
 
         # Load the best model weights
-        checkpoint = self.model_checkpoint.load()
-        self.model.load_state_dict(checkpoint["model"])
-        self.epoch = checkpoint["epoch"]
-        self.metrics = checkpoint["metrics"]
-        self.losses = checkpoint["losses"]
+        best_checkpoint = self.model_checkpoint.load()
+        self.model.load_state_dict(best_checkpoint["model"])
+        self.epoch = best_checkpoint["epoch"]
+        self.metrics = best_checkpoint["metrics"]
+        self.losses = best_checkpoint["losses"]
         print("-" * 80)
         print()
         print("Best validation score in epoch {}".format(self.epoch))
@@ -88,7 +88,7 @@ class Trainer:
         )
         print()
 
-        return self.model
+        return self.model, best_checkpoint
 
     def run_epoch(self, dataloader, is_training):
         # Set model to training mode if training; otherwise, set it to evaluation mode

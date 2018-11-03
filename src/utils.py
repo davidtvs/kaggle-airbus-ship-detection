@@ -1,5 +1,6 @@
 import os
 import errno
+import json
 import torch
 import torchvision
 import numpy as np
@@ -8,7 +9,7 @@ import matplotlib.pyplot as plt
 from data.utils import rle_encode
 
 
-def save_summary(filepath, losses, metrics, args):
+def save_summary(filepath, args, losses, metrics):
     """Saves the model in a specified directory with a specified name.save
 
     Arguments:
@@ -27,28 +28,10 @@ def save_summary(filepath, losses, metrics, args):
             raise
         pass
 
-    # Save arguments
+    metrics_dict = {m.name: m.value() for m in metrics}
+    out = {"args": vars(args), "losses": losses, "metrics": metrics_dict}
     with open(filepath, "w") as summary_file:
-        # Write arguments
-        summary_file.write("Arguments\n")
-        str_list = ["{0}: {1}".format(arg, getattr(args, arg)) for arg in args]
-        str_list = sorted(str_list)
-        summary_file.write("\n".join(str_list))
-        summary_file.write("\n")
-
-        # Write losses
-        summary_file.write("\nLosses\n")
-        str_list = ["{0}: {1}".format(key, losses[key]) for key in losses]
-        str_list = sorted(str_list)
-        summary_file.write("\n".join(str_list))
-        summary_file.write("\n")
-
-        # Write metrics
-        summary_file.write("\nMetrics\n")
-        str_list = ["{0}: {1}".format(key, metrics[key].value()) for key in metrics]
-        str_list = sorted(str_list)
-        summary_file.write("\n".join(str_list))
-        summary_file.write("\n")
+        json.dump(out, summary_file, indent=4, sort_keys=True)
 
 
 def imshow_batch(images, targets=None):
