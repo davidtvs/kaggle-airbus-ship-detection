@@ -21,8 +21,8 @@ class IoU(metric.Metric):
             computing the IoU. Can be an int, or any iterable of ints.
     """
 
-    def __init__(self, num_classes, normalized=False, ignore_index=None):
-        super().__init__()
+    def __init__(self, num_classes, normalized=False, ignore_index=None, name="miou"):
+        super().__init__(name)
         self.conf_metric = ConfusionMatrix(num_classes, normalized)
 
         if ignore_index is None:

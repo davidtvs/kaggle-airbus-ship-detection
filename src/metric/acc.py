@@ -10,9 +10,8 @@ class Accuracy(metric.Metric):
 
     """
 
-    def __init__(self):
-        super().__init__()
-
+    def __init__(self, name="acc"):
+        super().__init__(name)
         self.reset()
 
     def reset(self):

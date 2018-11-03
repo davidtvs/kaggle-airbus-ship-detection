@@ -1,6 +1,6 @@
-from .metric import MetricContainer
+from .metric import MetricList
 from .confusionmatrix import ConfusionMatrix
 from .iou import IoU
 from .acc import Accuracy
 
-__all__ = ["MetricContainer", "ConfusionMatrix", "IoU", "Accuracy"]
+__all__ = ["MetricList", "ConfusionMatrix", "IoU", "Accuracy"]

@@ -16,9 +16,8 @@ class ConfusionMatrix(metric.Metric):
     Modified from: https://github.com/pytorch/tnt/blob/master/torchnet/meter/confusionmeter.py
     """
 
-    def __init__(self, num_classes, normalized=False):
-        super().__init__()
-
+    def __init__(self, num_classes, normalized=False, name="conf"):
+        super().__init__(name)
         self.conf = np.ndarray((num_classes, num_classes), dtype=np.int32)
         self.normalized = normalized
         self.num_classes = num_classes

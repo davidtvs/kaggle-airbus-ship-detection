@@ -1,12 +1,12 @@
-from collections import OrderedDict
-
-
 class Metric(object):
     """Base class for all metrics.
 
     From: https://github.com/pytorch/tnt/blob/master/torchnet/meter/meter.py
     """
 
+    def __init__(self, name):
+        self.name = name
+
     def reset(self):
         pass
 
@@ -17,37 +17,29 @@ class Metric(object):
         pass
 
 
-class MetricContainer(object):
+class MetricList(object):
     def __init__(self, metrics):
-        if isinstance(metrics, OrderedDict):
-            self.metrics = metrics
-        else:
-            raise TypeError(
-                "expect 'OrderedDict' for 'metrics' parameter; got '{}'".format(
-                    type(metrics)
-                )
-            )
+        # Make sure we get a list even if metrics is some other type of iterable
+        self.metrics = [m for m in metrics]
 
     def reset(self):
-        for key in self.metrics:
-            self.metrics[key].reset()
+        for m in self.metrics:
+            m.reset()
 
     def add(self, predicted, target):
-        for key in self.metrics:
-            self.metrics[key].add(predicted, target)
+        for m in self.metrics:
+            m.add(predicted, target)
 
     def value(self):
-        return [self.metrics[key].value() for key in self.metrics]
+        return [m.value() for m in self.metrics]
 
     def first(self):
-        key = next(iter(self.metrics))
-        return (key, self.metrics[key])
+        m = next(iter(self.metrics))
+        return (m.name, m)
 
     def __iter__(self):
         return iter(self.metrics)
 
     def __str__(self):
-        str_list = [
-            "{}: {:.4f}".format(key, self.metrics[key].value()) for key in self.metrics
-        ]
+        str_list = ["{}: {:.4f}".format(m.name, m.value()) for m in self.metrics]
         return " - ".join(str_list)

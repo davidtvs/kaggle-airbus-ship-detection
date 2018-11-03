@@ -1,5 +1,4 @@
 import os
-from collections import OrderedDict
 import torch
 import torch.utils.data as data
 import torchvision.transforms as tf
@@ -83,8 +82,7 @@ if __name__ == "__main__":
 
     # Metrics: accuracy. The validation accuracy is the quantity monitored in
     # lr_scheduler, early_stopping, and model_checkpoint
-    metrics_dict = OrderedDict([("acc", metric.Accuracy())])
-    metrics = metric.MetricContainer(metrics_dict)
+    metrics = metric.MetricList([metric.Accuracy()])
     early_stopping = EarlyStopping(mode="max", patience=args.stop_patience)
 
     # Train the model
