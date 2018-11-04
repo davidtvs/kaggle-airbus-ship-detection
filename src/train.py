@@ -129,5 +129,5 @@ if __name__ == "__main__":
     utils.save_config(config_path, config)
     summary_path = os.path.join(checkpoint_dir, "summary.json")
     utils.save_summary(
-        summary_path, config, checkpoint["losses"], checkpoint["metrics"]
+        summary_path, vars(args), config, checkpoint["losses"], checkpoint["metrics"]
     )

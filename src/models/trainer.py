@@ -64,14 +64,12 @@ class Trainer:
 
             print("Training")
             self.losses["train"] = self.run_epoch(train_dataloader, is_training=True)
-            print("Loss - {:.4f}".format(self.losses["train"]))
-            print("Metrics - {}".format(self.metrics))
+            print("loss: {:.4f} {}".format(self.losses["train"], self.metrics))
             print()
 
             print("Validation")
             self.losses["val"] = self.run_epoch(val_dataloader, is_training=False)
-            print("Loss - {:.4f}".format(self.losses["val"]))
-            print("Metrics - {}".format(self.metrics))
+            print("loss: {:.4f} {}".format(self.losses["val"], self.metrics))
             print()
 
             # Check if we have to stop early
