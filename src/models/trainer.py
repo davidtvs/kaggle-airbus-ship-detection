@@ -20,7 +20,6 @@ class Trainer:
         model_checkpoint=None,
         device=None,
     ):
-        self.optimizer = optimizer
         self.criterion = criterion
         self.metrics = metrics
         self.start_epoch = start_epoch
@@ -39,6 +38,17 @@ class Trainer:
             device = "cuda:0" if torch.cuda.is_available() else "cpu"
         self.device = torch.device(device)
         self.model = model.to(self.device)
+
+        # If the optimizer is loaded from a checkpoint the states are loaded to the CPU,
+        # during training, if the device is the GPU the optimizer will raise an error
+        # because it'll expect a CPU tensor. To solve this problem the optimizer state
+        # is manually moved to the correct device.
+        # See https://github.com/pytorch/pytorch/issues/2830 for more details.
+        self.optimizer = optimizer
+        for state in self.optimizer.state.values():
+            for k, v in state.items():
+                if torch.is_tensor(v):
+                    state[k] = v.to(self.device)
 
         self.stop = False
         self.losses = {"train": 0, "val": 0}
@@ -267,10 +277,14 @@ class ModelCheckpoint(object):
                 raise
             pass
 
+        # Make sure the model is in training mode to save the state of layers like
+        # batch normalization and dropout.
+        model = self.trainer.model.train()
+
         # Save model
         checkpoint = {
             "epoch": self.trainer.epoch,
-            "model": self.trainer.model.state_dict(),
+            "model": model.state_dict(),
             "optimizer": self.trainer.optimizer.state_dict(),
             "losses": self.trainer.losses,
             "metrics": self.trainer.metrics,

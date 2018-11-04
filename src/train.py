@@ -14,16 +14,15 @@ from data.airbus import AirbusShipDataset
 
 # Run only if this module is being run directly
 if __name__ == "__main__":
+    num_classes = 1
+
     # Get arguments from the command-line and json configuration
     args = get_train_args()
     config = utils.load_config(args.config)
 
-    num_classes = 1
-    input_dim = (config["img_h"], config["img_w"])
-
     # Compose the image transforms to be applied to the data
+    input_dim = (config["img_h"], config["img_w"])
     image_transform = tf.Compose([tf.Resize(input_dim), tf.ToTensor()])
-
     target_transform = tf.Compose([tf.Resize(input_dim), ctf.TargetHasShipTensor()])
 
     # Initialize the datasets and dataloaders
@@ -46,7 +45,6 @@ if __name__ == "__main__":
     if config["dataset_info"]:
         utils.dataloader_info(train_loader)
 
-    print()
     print("Loading validation dataset...")
     valset = AirbusShipDataset(
         config["dataset_dir"],
@@ -67,28 +65,47 @@ if __name__ == "__main__":
         utils.dataloader_info(val_loader)
 
     # Initialize ship or no-ship detection network
-    print()
-    print("Loading ship detection model...")
+    print("Loading ship detection model ({})...".format(config["resnet_size"]))
     snsnet = sns.resnet(config["resnet_size"], num_classes)
 
     # Loss function: binary cross entropy with logits. Expects logits therefore the
     # output layer must return a logits instead of probabilities
     criterion = torch.nn.BCEWithLogitsLoss()
 
-    # Optimizer with learning rate scheduling
+    # Optimizer: adam
     optimizer = torch.optim.Adam(snsnet.parameters(), lr=config["lr_rate"])
+
+    # If a model checkpoint has been specified try to load its weights
+    start_epoch = 1
+    metrics = metric.MetricList([metric.Accuracy()])
+    if args.model_checkpoint:
+        print("Loading weights from {}...".format(args.model_checkpoint))
+        checkpoint = torch.load(args.model_checkpoint, map_location=torch.device("cpu"))
+        snsnet.load_state_dict(checkpoint["model"])
+
+        # If the --resume flag is specified, training will continue from the checkpoint
+        # as if it was never aborted. Otherwise, training will take only the already
+        # loaded weights start from scratch
+        if args.resume:
+            start_epoch = checkpoint["epoch"] + 1
+            optimizer.load_state_dict(checkpoint["optimizer"])
+            metrics = checkpoint["metrics"]
+            print(
+                "Resuming training from epoch {}: Metrics - {}".format(
+                    start_epoch, metrics
+                )
+            )
+
+    checkpoint_dir = os.path.join(config["checkpoint_dir"], config["model_name"])
+    model_path = os.path.join(checkpoint_dir, config["model_name"] + ".pth")
+
+    # Set up learning rate secheduling, model checkpoints, and early stopping. The mode
+    # argument is set to max because the quantity that will be monitored is the first
+    # metric in the 'metrics' MetricList
     lr_scheduler = ReduceLROnPlateau(
         optimizer, mode="max", patience=config["lr_patience"], verbose=True
     )
-
-    # Save a checkpoint after an epoch with better score
-    checkpoint_dir = os.path.join(config["checkpoint_dir"], config["model_name"])
-    checkpoint_path = os.path.join(checkpoint_dir, config["model_name"] + ".pth")
-    model_checkpoint = ModelCheckpoint(checkpoint_path, mode="max")
-
-    # Metrics: accuracy. The validation accuracy is the quantity monitored in
-    # lr_scheduler, early_stopping, and model_checkpoint
-    metrics = metric.MetricList([metric.Accuracy()])
+    model_checkpoint = ModelCheckpoint(model_path, mode="max")
     early_stopping = EarlyStopping(mode="max", patience=config["stop_patience"])
 
     # Train the model
@@ -99,6 +116,7 @@ if __name__ == "__main__":
         criterion,
         metrics,
         config["epochs"],
+        start_epoch=start_epoch,
         lr_scheduler=lr_scheduler,
         early_stop=early_stopping,
         model_checkpoint=model_checkpoint,

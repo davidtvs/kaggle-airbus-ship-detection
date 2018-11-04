@@ -19,10 +19,17 @@ def predict(model, dataloader, device):
     predictions = []
     for step, (images, _) in enumerate(tqdm(dataloader)):
         images = images.to(device)
-        logits = model(images)
 
-        # Apply the sigmoid function to get the prediction from the logits
-        pred = torch.sigmoid(logits).detach().round_().cpu().numpy()
+        # We don't want to compute gradients, deactivate the autograd engine, this also
+        # saves a lot of memory
+        with torch.no_grad():
+            # Do a froward pass with the images and apply the sigmoid function to get
+            # the prediction
+            logits = model(images)
+            # Note: Because gradients are not computed there is no need to detach from
+            # the graph
+            pred = torch.sigmoid(logits).round_().cpu().numpy()
+
         predictions.append(pred)
 
     time_elapsed = time.time() - since
@@ -72,14 +79,11 @@ if __name__ == "__main__":
         utils.dataloader_info(test_loader)
 
     # Initialize ship or no-ship detection network and then laod the weigths
-    print()
     print("Loading ship detection model...")
     snsnet = sns.resnet(config["resnet_size"], num_classes)
-    print(snsnet)
 
-    print()
     print("Loading model weights from {}...".format(checkpoint_path))
-    checkpoint = torch.load(checkpoint_path)
+    checkpoint = torch.load(checkpoint_path, map_location=torch.device("cpu"))
     snsnet.load_state_dict(checkpoint["model"])
 
     print()

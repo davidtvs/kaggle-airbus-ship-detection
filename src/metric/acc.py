@@ -8,6 +8,8 @@ class Accuracy(metric.Metric):
 
     accuracy = correct_predictions / total_predictions
 
+    Arguments:
+        name (str): a name for the metric. Default: acc.
     """
 
     def __init__(self, name="acc"):

@@ -12,6 +12,7 @@ class ConfusionMatrix(metric.Metric):
         num_classes (int): number of classes in the classification problem.
         normalized (boolean, optional): Determines whether or not the confusion matrix
             is normalized or not. Default: False.
+        name (str): a name for the metric. Default: conf.
 
     Modified from: https://github.com/pytorch/tnt/blob/master/torchnet/meter/confusionmeter.py
     """

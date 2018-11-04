@@ -2,6 +2,9 @@ class Metric(object):
     """Base class for all metrics.
 
     From: https://github.com/pytorch/tnt/blob/master/torchnet/meter/meter.py
+
+    Arguments:
+        name (str): a name for the metric. Default: miou.
     """
 
     def __init__(self, name):

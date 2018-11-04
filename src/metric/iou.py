@@ -18,7 +18,8 @@ class IoU(metric.Metric):
         normalized (boolean, optional): Determines whether or not the confusion matrix
             is normalized or not. Default: False.
         ignore_index (int or iterable, optional): Index of the classes to ignore when
-            computing the IoU. Can be an int, or any iterable of ints.
+            computing the IoU. Can be an int, or any iterable of ints. Default: None.
+        name (str): a name for the metric. Default: miou.
     """
 
     def __init__(self, num_classes, normalized=False, ignore_index=None, name="miou"):
