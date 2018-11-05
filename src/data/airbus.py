@@ -25,7 +25,7 @@ class AirbusShipDataset(Dataset):
         transform=None,
         target_transform=None,
         train_val_split=0.2,
-        data_slice=None,
+        data_slice=1.0,
         random_state=None,
     ):
         self.root_dir = root_dir
@@ -73,8 +73,7 @@ class AirbusShipDataset(Dataset):
             # Get the list of images from the test set
             data_dir = os.path.join(root_dir, self.test_dir)
             data_names = os.listdir(data_dir)
-            if data_slice:
-                data_names = self._slice(data_names, data_slice)
+            data_names = self._slice(data_names, data_slice)
             self.data_path = [os.path.join(data_dir, f) for f in data_names]
 
             # The test set ground-truth is not public
