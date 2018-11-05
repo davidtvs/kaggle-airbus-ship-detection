@@ -1,6 +1,5 @@
 import numpy as np
-from metric import metric
-from metric.confusionmatrix import ConfusionMatrix
+from metric import metric, utils
 
 
 class IoU(metric.Metric):
@@ -24,7 +23,9 @@ class IoU(metric.Metric):
 
     def __init__(self, num_classes, normalized=False, ignore_index=None, name="miou"):
         super().__init__(name)
-        self.conf_metric = ConfusionMatrix(num_classes, normalized)
+        self.num_classes = num_classes
+        self.normalized = normalized
+        self.conf_matrix = np.ndarray((num_classes, num_classes), dtype=np.int32)
 
         if ignore_index is None:
             self.ignore_index = None
@@ -37,7 +38,7 @@ class IoU(metric.Metric):
                 raise ValueError("'ignore_index' must be an int or iterable")
 
     def reset(self):
-        self.conf_metric.reset()
+        self.conf_matrix.fill(0)
 
     def add(self, predicted, target):
         """Adds the predicted and target pair to the IoU metric.
@@ -68,7 +69,9 @@ class IoU(metric.Metric):
         if target.dim() == 4:
             _, target = target.max(1)
 
-        self.conf_metric.add(predicted.view(-1), target.view(-1))
+        self.conf_matrix += utils.confusion_matrix(
+            self.num_classes, predicted.view(-1), target.view(-1)
+        )
 
     def value(self):
         """Computes the mean IoU.
@@ -87,14 +90,13 @@ class IoU(metric.Metric):
             numpy.ndarray: An array where each element corresponds to the IoU of that
             class.
         """
-        conf_matrix = self.conf_metric.value()
         if self.ignore_index is not None:
             for index in self.ignore_index:
-                conf_matrix[:, self.ignore_index] = 0
-                conf_matrix[self.ignore_index, :] = 0
-        true_positive = np.diag(conf_matrix)
-        false_positive = np.sum(conf_matrix, 0) - true_positive
-        false_negative = np.sum(conf_matrix, 1) - true_positive
+                self.conf_matrix[:, self.ignore_index] = 0
+                self.conf_matrix[self.ignore_index, :] = 0
+        true_positive = np.diag(self.conf_matrix)
+        false_positive = np.sum(self.conf_matrix, 0) - true_positive
+        false_negative = np.sum(self.conf_matrix, 1) - true_positive
 
         # Just in case we get a division by 0, ignore/hide the error
         with np.errstate(divide="ignore", invalid="ignore"):
