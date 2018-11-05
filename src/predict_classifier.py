@@ -6,7 +6,7 @@ import utils
 from engine import predict
 from args import get_predict_args
 from data.airbus import AirbusShipDataset
-import models.ship_noship as sns
+import models.classifier as classifier
 
 
 if __name__ == "__main__":
@@ -47,12 +47,12 @@ if __name__ == "__main__":
 
     # Initialize ship or no-ship detection network and then laod the weigths
     print("Loading ship detection model...")
-    snsnet = sns.resnet(config["resnet_size"], num_classes)
+    net = classifier.resnet(config["resnet_size"], num_classes)
 
     print("Loading model weights from {}...".format(checkpoint_path))
     checkpoint = torch.load(checkpoint_path, map_location=torch.device("cpu"))
-    snsnet.load_state_dict(checkpoint["model"])
+    net.load_state_dict(checkpoint["model"])
 
     print()
     print("Generating predictions...")
-    predictions = predict(snsnet, test_loader, config["device"])
+    predictions = predict(net, test_loader, config["device"])

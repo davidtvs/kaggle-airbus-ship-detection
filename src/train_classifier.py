@@ -8,7 +8,7 @@ import utils
 import metric
 import engine
 import transforms as ctf
-import models.ship_noship as sns
+import models.classifier as classifier
 from args import get_train_args
 from data.airbus import AirbusShipDataset
 
@@ -66,14 +66,14 @@ if __name__ == "__main__":
 
     # Initialize ship or no-ship detection network
     print("Loading ship detection model ({})...".format(config["resnet_size"]))
-    snsnet = sns.resnet(config["resnet_size"], num_classes)
+    net = classifier.resnet(config["resnet_size"], num_classes)
 
     # Loss function: binary cross entropy with logits. Expects logits therefore the
     # output layer must return a logits instead of probabilities
     criterion = torch.nn.BCEWithLogitsLoss()
 
     # Optimizer: adam
-    optimizer = torch.optim.Adam(snsnet.parameters(), lr=config["lr_rate"])
+    optimizer = torch.optim.Adam(net.parameters(), lr=config["lr_rate"])
 
     # If a model checkpoint has been specified try to load its weights
     start_epoch = 1
@@ -81,7 +81,7 @@ if __name__ == "__main__":
     if args.model_checkpoint:
         print("Loading weights from {}...".format(args.model_checkpoint))
         checkpoint = torch.load(args.model_checkpoint, map_location=torch.device("cpu"))
-        snsnet.load_state_dict(checkpoint["model"])
+        net.load_state_dict(checkpoint["model"])
 
         # If the --resume flag is specified, training will continue from the checkpoint
         # as if it was never aborted. Otherwise, training will take only the already
@@ -111,7 +111,7 @@ if __name__ == "__main__":
     # Train the model
     print()
     train = engine.Trainer(
-        snsnet,
+        net,
         optimizer,
         criterion,
         metrics,
@@ -122,7 +122,7 @@ if __name__ == "__main__":
         model_checkpoint=model_checkpoint,
         device=config["device"],
     )
-    snsnet, checkpoint = train.fit(train_loader, val_loader)
+    net, checkpoint = train.fit(train_loader, val_loader)
 
     # Save a summary file containing the args, losses, and metrics
     config_path = os.path.join(checkpoint_dir, os.path.basename(args.config))
