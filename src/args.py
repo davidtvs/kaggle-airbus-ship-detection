@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 
-def train_classifier_args():
+def train_args():
     """Defines command-line arguments for training."""
     parser = ArgumentParser()
 
@@ -9,8 +9,7 @@ def train_classifier_args():
         "--config",
         "-c",
         type=str,
-        default="train_classifier.json",
-        help="Path to the JSON configuration file. Default: train_classifier.json",
+        help="Path to the JSON configuration file. Default: null",
     )
     parser.add_argument(
         "--model-checkpoint",

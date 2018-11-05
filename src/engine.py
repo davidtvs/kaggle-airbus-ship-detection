@@ -53,7 +53,7 @@ class Trainer:
         self.stop = False
         self.losses = {"train": 0, "val": 0}
 
-    def fit(self, train_dataloader, val_dataloader):
+    def fit(self, train_dataloader, val_dataloader, output_fn=None):
         # Get the current time to know how much time it took to train the model
         since = time.time()
 
@@ -63,12 +63,16 @@ class Trainer:
             print("-" * 80)
 
             print("Training")
-            self.losses["train"] = self.run_epoch(train_dataloader, is_training=True)
+            self.losses["train"] = self.run_epoch(
+                train_dataloader, is_training=True, output_fn=output_fn
+            )
             print("loss: {:.4f} {}".format(self.losses["train"], self.metrics))
             print()
 
             print("Validation")
-            self.losses["val"] = self.run_epoch(val_dataloader, is_training=False)
+            self.losses["val"] = self.run_epoch(
+                val_dataloader, is_training=False, output_fn=output_fn
+            )
             print("loss: {:.4f} {}".format(self.losses["val"], self.metrics))
             print()
 
@@ -98,7 +102,7 @@ class Trainer:
 
         return self.model, best_checkpoint
 
-    def run_epoch(self, dataloader, is_training):
+    def run_epoch(self, dataloader, is_training, output_fn=None):
         # Set model to training mode if training; otherwise, set it to evaluation mode
         if is_training:
             self.model.train()
@@ -116,7 +120,7 @@ class Trainer:
             targets = targets.to(self.device)
 
             # Run a single iteration
-            step_loss = self.run_step(inputs, targets, is_training)
+            step_loss = self.run_step(inputs, targets, is_training, output_fn=output_fn)
             running_loss += step_loss
 
         epoch_loss = running_loss / len(dataloader.dataset)
@@ -129,7 +133,7 @@ class Trainer:
 
         return epoch_loss
 
-    def run_step(self, inputs, targets, is_training):
+    def run_step(self, inputs, targets, is_training, output_fn=None):
         # Zero the parameter gradients
         self.optimizer.zero_grad()
 
@@ -139,17 +143,20 @@ class Trainer:
             outputs = self.model(inputs)
             loss = self.criterion(outputs, targets)
 
-            # Apply the sigmoid function to get the prediction from the logits
-            preds = torch.sigmoid(outputs).detach().round_()
-
             # Backward only if training
             if is_training:
                 loss.backward()
                 self.optimizer.step()
 
+            # Apply the output function to the model output (e.g. to convert from logits
+            # to predictions)
+            outputs = outputs.detach()
+            if output_fn is not None:
+                outputs = output_fn(outputs)
+
         # Statistics
         loss = loss.item() * inputs.size(0)
-        self.metrics.add(preds.squeeze_(), targets.squeeze_())
+        self.metrics.add(outputs.squeeze(), targets.squeeze())
 
         return loss
 

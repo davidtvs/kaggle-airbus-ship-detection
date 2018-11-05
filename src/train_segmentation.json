@@ -1,0 +1,18 @@
+{
+    "batch_size": 16,
+    "checkpoint_dir": "checkpoints",
+    "dataset_dir": "../dataset/",
+    "dataset_info": false,
+    "device": "cuda",
+    "epochs": 2,
+    "img_h": 64,
+    "img_w": 64,
+    "lr_patience": 2,
+    "lr_rate": 0.001,
+    "model_name": "model",
+    "model": "enet",
+    "slice_factor": 1.0,
+    "stop_patience": 5,
+    "val_split": 0.15,
+    "workers": 4
+}

@@ -44,31 +44,23 @@ class IoU(metric.Metric):
         """Adds the predicted and target pair to the IoU metric.
 
         Arguments:
-            predicted (Tensor): Can be a (N, K, H, W) tensor of
-                predicted scores obtained from the model for N examples and K classes,
-                or (N, H, W) tensor of integer values between 0 and K-1.
-            target (Tensor): Can be a (N, K, H, W) tensor of
-                target scores for N examples and K classes, or (N, H, W) tensor of
-                integer values between 0 and K-1.
+            predicted (torch.Tensor): A (N, H, W) or a (H, W) tensor of integer encoded
+                target values in the range [0, num_classes-1].
+            target (torch.Tensor): A (N, H, W) or a (H, W) tensor of integer encoded
+                target values in the range [0, num_classes-1].
 
         """
-        # Dimensions check
-        assert predicted.size(0) == target.size(
-            0
-        ), "number of targets and predicted outputs do not match"
-        assert (
-            predicted.dim() == 3 or predicted.dim() == 4
-        ), "predictions must be of dimension (N, H, W) or (N, K, H, W)"
-        assert (
-            target.dim() == 3 or target.dim() == 4
-        ), "targets must be of dimension (N, H, W) or (N, K, H, W)"
+        # Parameter check
+        if predicted.size() != target.size():
+            raise ValueError(
+                "size mismatch, {} != {}".format(predicted.size(), target.size())
+            )
+        elif predicted.min() < 0 or predicted.max() > self.num_classes - 1:
+            raise ValueError("predicted values outside range [0, num_classes-1]")
+        elif target.min() < 0 or target.max() > self.num_classes - 1:
+            raise ValueError("target values outside range [0, num_classes-1]")
 
-        # If the tensor is in categorical format convert it to integer format
-        if predicted.dim() == 4:
-            _, predicted = predicted.max(1)
-        if target.dim() == 4:
-            _, target = target.max(1)
-
+        # Add to the confusion matrix
         self.conf_matrix += utils.confusion_matrix(
             self.num_classes, predicted.view(-1), target.view(-1)
         )

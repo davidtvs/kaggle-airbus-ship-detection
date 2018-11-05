@@ -14,6 +14,7 @@ from data.airbus import AirbusShipDataset
 
 # Run only if this module is being run directly
 if __name__ == "__main__":
+
     # Get arguments from the command-line and json configuration
     args = train_args()
     config = utils.load_config(args.config)
@@ -21,13 +22,13 @@ if __name__ == "__main__":
     # Compose the image transforms to be applied to the data
     input_dim = (config["img_h"], config["img_w"])
     image_transform = tf.Compose([tf.Resize(input_dim), tf.ToTensor()])
-    target_transform = tf.Compose([tf.Resize(input_dim), ctf.TargetHasShipTensor()])
+    target_transform = tf.Compose([tf.Resize(input_dim), ctf.ToLongTensor()])
 
     # Initialize the datasets and dataloaders
     print("Loading training dataset...")
     trainset = AirbusShipDataset(
         config["dataset_dir"],
-        False,
+        True,
         mode="train",
         transform=image_transform,
         target_transform=target_transform,
@@ -47,7 +48,7 @@ if __name__ == "__main__":
     print("Loading validation dataset...")
     valset = AirbusShipDataset(
         config["dataset_dir"],
-        False,
+        True,
         mode="val",
         transform=image_transform,
         target_transform=target_transform,
@@ -64,20 +65,28 @@ if __name__ == "__main__":
     if config["dataset_info"]:
         utils.dataloader_info(val_loader)
 
-    # Initialize ship or no-ship detection network
-    num_classes = 1
-    print("Loading ship detection model ({})...".format(config["resnet_size"]))
-    net = models.resnet(config["resnet_size"], num_classes)
+    # Initialize ship segmentation network
+    num_classes = 2
+    model_str = config["model"].lower()
+    print("Loading ship segmentation model ({})...".format(model_str))
+    if model_str == "enet":
+        net = models.ENet(num_classes)
+    elif model_str == "linknet":
+        net = models.LinkNet(num_classes)
+    else:
+        raise ValueError(
+            "requested unknown model {}, expect one of (ENet, LinkNet)".format(
+                model_str
+            )
+        )
 
-    # Loss function: binary cross entropy with logits. Expects logits therefore the
-    # output layer must return a logits instead of probabilities
-    criterion = torch.nn.BCEWithLogitsLoss()
+    # Loss function: Combines the activation function nn.LogSoftmax() and the loss
+    # function nn.NLLLoss() into a single class. Therefore, it expects logits instead of
+    # probabilities.
+    criterion = torch.nn.CrossEntropyLoss()
 
     def logits_to_pred(logits):
         """Function to transform logits into predictions.
-
-        Applies the sigmoid function to the logits and rounds the result
-        (threshold at 0.5).
 
         Arguments:
             logits (torch.Tensor): logits output by the model.
@@ -85,14 +94,15 @@ if __name__ == "__main__":
         Returns:
             torch.Tensor: The predictions.
         """
-        return torch.sigmoid(logits).round_()
+        _, predictions = logits.max(1)
+        return predictions
 
     # Optimizer: adam
     optimizer = torch.optim.Adam(net.parameters(), lr=config["lr_rate"])
 
     # If a model checkpoint has been specified try to load its weights
     start_epoch = 1
-    metrics = metric.MetricList([metric.Accuracy()])
+    metrics = metric.MetricList([metric.IoU(num_classes), metric.Accuracy()])
     if args.model_checkpoint:
         print("Loading weights from {}...".format(args.model_checkpoint))
         checkpoint = torch.load(args.model_checkpoint, map_location=torch.device("cpu"))
