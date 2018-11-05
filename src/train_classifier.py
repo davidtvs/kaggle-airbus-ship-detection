@@ -9,7 +9,7 @@ import metric
 import engine
 import transforms as ctf
 import models.classifier as classifier
-from args import get_train_args
+from args import train_classifier_args
 from data.airbus import AirbusShipDataset
 
 # Run only if this module is being run directly
@@ -17,7 +17,7 @@ if __name__ == "__main__":
     num_classes = 1
 
     # Get arguments from the command-line and json configuration
-    args = get_train_args()
+    args = train_classifier_args()
     config = utils.load_config(args.config)
 
     # Compose the image transforms to be applied to the data

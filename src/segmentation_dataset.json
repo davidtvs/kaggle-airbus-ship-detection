@@ -1,0 +1,11 @@
+{
+    "batch_size": 128,
+    "dataset_dir": "../dataset/",
+    "dataset_info": false,
+    "device": "cuda",
+    "img_h": 224,
+    "img_w": 224,
+    "model_checkpoint": "./checkpoints/model/model.pth",
+    "resnet_size": 34,
+    "workers": 4
+}

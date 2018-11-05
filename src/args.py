@@ -1,7 +1,7 @@
 from argparse import ArgumentParser
 
 
-def get_train_args():
+def train_classifier_args():
     """Defines command-line arguments for training."""
     parser = ArgumentParser()
 
@@ -9,8 +9,8 @@ def get_train_args():
         "--config",
         "-c",
         type=str,
-        default="train.json",
-        help="Path to the JSON configuration file. Default: train.json",
+        default="train_classifier.json",
+        help="Path to the JSON configuration file. Default: train_classifier.json",
     )
     parser.add_argument(
         "--model-checkpoint",
@@ -37,7 +37,7 @@ def get_train_args():
     return parser.parse_args()
 
 
-def get_predict_args():
+def segmentation_dataset_args():
     """Defines command-line arguments for predictions."""
     parser = ArgumentParser()
 
@@ -45,8 +45,8 @@ def get_predict_args():
         "--config",
         "-c",
         type=str,
-        default="predict.json",
-        help="Path to the JSON configuration file. Default: predict.json",
+        default="segmentation_dataset.json",
+        help="Path to the JSON configuration file. Default: segmentation_dataset.json",
     )
 
     return parser.parse_args()

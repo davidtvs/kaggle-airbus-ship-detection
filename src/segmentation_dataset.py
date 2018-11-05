@@ -1,17 +1,19 @@
 import os
+import pandas as pd
 import torch
 import torch.utils.data as data
 import torchvision.transforms as transforms
 import utils
-from engine import predict
-from args import get_predict_args
-from data.airbus import AirbusShipDataset
+import transforms as ctf
 import models.classifier as classifier
+from engine import predict
+from args import segmentation_dataset_args
+from data.airbus import AirbusShipDataset
 
 
 if __name__ == "__main__":
     # Get arguments from the command-line and json configuration
-    args = get_predict_args()
+    args = segmentation_dataset_args()
     config = utils.load_config(args.config)
 
     num_classes = 1
@@ -28,22 +30,26 @@ if __name__ == "__main__":
         [transforms.Resize(input_dim), transforms.ToTensor()]
     )
     target_transform = transforms.Compose(
-        [transforms.Resize(input_dim), transforms.ToTensor()]
+        [transforms.Resize(input_dim), ctf.TargetHasShipTensor()]
     )
 
-    # Initialize the dataset in test mode
+    # Initialize the dataset in training mode without data split
     print("Loading training dataset...")
-    testset = AirbusShipDataset(
+    dataset = AirbusShipDataset(
         config["dataset_dir"],
-        mode="test",
+        mode="train",
         transform=image_transform,
         target_transform=target_transform,
+        train_val_split=0.0,
     )
-    test_loader = data.DataLoader(
-        testset, batch_size=config["batch_size"], num_workers=config["workers"]
+    dataloader = data.DataLoader(
+        dataset,
+        batch_size=config["batch_size"],
+        shuffle=False,
+        num_workers=config["workers"],
     )
     if config["dataset_info"]:
-        utils.dataloader_info(test_loader)
+        utils.dataloader_info(dataloader)
 
     # Initialize ship or no-ship detection network and then laod the weigths
     print("Loading ship detection model...")
@@ -55,4 +61,20 @@ if __name__ == "__main__":
 
     print()
     print("Generating predictions...")
-    predictions = predict(net, test_loader, config["device"])
+    predictions, targets = predict(net, dataloader, config["device"])
+
+    print()
+    print("Generating segmentation dataset...")
+    true_targets = targets == 1
+    false_positives = (predictions == 1) & (targets == 0)
+
+    # Select from the full training set the images that are either true positives or
+    # false positives
+    csv_path = os.path.join(config["dataset_dir"], dataset.rle_filename)
+    df = pd.read_csv(csv_path).set_index("ImageId")
+    image_id = df.index.unique()
+    df = df.loc[(image_id[true_targets]) | (image_id[false_positives])]
+
+    csv_path = os.path.join(config["dataset_dir"], "train_ship_segmentations_clf.csv")
+    df.to_csv(csv_path, index=False)
+    print("Done! Saved dataset for segmentation in {}".format(csv_path))

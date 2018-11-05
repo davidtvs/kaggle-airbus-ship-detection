@@ -159,9 +159,10 @@ def predict(model, dataloader, device):
     model = model.to(device).eval()
 
     # Get the current time to know how much time it took to make the predictions
+    all_pred = None
+    all_targets = None
     since = time.time()
-    predictions = []
-    for step, (images, _) in enumerate(tqdm(dataloader)):
+    for step, (images, targets) in enumerate(tqdm(dataloader)):
         images = images.to(device)
 
         # We don't want to compute gradients, deactivate the autograd engine, this also
@@ -174,7 +175,12 @@ def predict(model, dataloader, device):
             # the graph
             pred = torch.sigmoid(logits).round_().cpu().numpy()
 
-        predictions.append(pred)
+        if all_pred is None:
+            all_pred = pred
+            all_targets = targets.numpy()
+        else:
+            all_pred = np.concatenate((all_pred, pred))
+            all_targets = np.concatenate((all_targets, targets.numpy()))
 
     time_elapsed = time.time() - since
     print(
@@ -183,7 +189,7 @@ def predict(model, dataloader, device):
         )
     )
 
-    return predictions
+    return all_pred.squeeze(), all_targets.squeeze()
 
 
 class EarlyStopping(object):
