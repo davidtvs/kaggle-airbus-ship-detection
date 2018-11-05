@@ -29,6 +29,7 @@ if __name__ == "__main__":
     print("Loading training dataset...")
     trainset = AirbusShipDataset(
         config["dataset_dir"],
+        False,
         mode="train",
         transform=image_transform,
         target_transform=target_transform,
@@ -48,6 +49,7 @@ if __name__ == "__main__":
     print("Loading validation dataset...")
     valset = AirbusShipDataset(
         config["dataset_dir"],
+        False,
         mode="val",
         transform=image_transform,
         target_transform=target_transform,

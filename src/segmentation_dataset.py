@@ -37,6 +37,7 @@ if __name__ == "__main__":
     print("Loading training dataset...")
     dataset = AirbusShipDataset(
         config["dataset_dir"],
+        False,
         mode="train",
         transform=image_transform,
         target_transform=target_transform,
@@ -70,11 +71,11 @@ if __name__ == "__main__":
 
     # Select from the full training set the images that are either true positives or
     # false positives
-    csv_path = os.path.join(config["dataset_dir"], dataset.rle_filename)
+    csv_path = os.path.join(config["dataset_dir"], dataset.clf_filename)
     df = pd.read_csv(csv_path).set_index("ImageId")
     image_id = df.index.unique()
     df = df.loc[(image_id[true_targets]) | (image_id[false_positives])]
 
-    csv_path = os.path.join(config["dataset_dir"], "train_ship_segmentations_clf.csv")
+    csv_path = os.path.join(config["dataset_dir"], dataset.seg_filename)
     df.to_csv(csv_path, index=False)
     print("Done! Saved dataset for segmentation in {}".format(csv_path))

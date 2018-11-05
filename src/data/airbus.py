@@ -15,12 +15,14 @@ class AirbusShipDataset(Dataset):
     train_dir = "train_v2"
     test_dir = "test_v2"
 
-    # Run-length encoded target mask
-    rle_filename = "train_ship_segmentations_v2.csv"
+    # Run-length encoded CSV files
+    clf_filename = "train_ship_segmentations_v2.csv"
+    seg_filename = "train_ship_segmentations_seg.csv"
 
     def __init__(
         self,
         root_dir,
+        for_segmentation,
         mode="train",
         transform=None,
         target_transform=None,
@@ -32,11 +34,15 @@ class AirbusShipDataset(Dataset):
         self.mode = mode.lower()
         self.transform = transform
         self.target_transform = target_transform
+        if for_segmentation:
+            rle_filename = self.seg_filename
+        else:
+            rle_filename = self.clf_filename
 
         if self.mode in ("train", "val"):
 
             # Read CSV with run-length encoding
-            rle_path = os.path.join(root_dir, self.rle_filename)
+            rle_path = os.path.join(root_dir, rle_filename)
             rle_df = pd.read_csv(rle_path).set_index("ImageId")
 
             # Remove the corrupted images
