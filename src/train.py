@@ -6,9 +6,9 @@ from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 import utils
 import metric
+import engine
 import transforms as ctf
 import models.ship_noship as sns
-from models.trainer import Trainer, ModelCheckpoint, EarlyStopping
 from args import get_train_args
 from data.airbus import AirbusShipDataset
 
@@ -105,12 +105,12 @@ if __name__ == "__main__":
     lr_scheduler = ReduceLROnPlateau(
         optimizer, mode="max", patience=config["lr_patience"], verbose=True
     )
-    model_checkpoint = ModelCheckpoint(model_path, mode="max")
-    early_stopping = EarlyStopping(mode="max", patience=config["stop_patience"])
+    model_checkpoint = engine.ModelCheckpoint(model_path, mode="max")
+    early_stopping = engine.EarlyStopping(mode="max", patience=config["stop_patience"])
 
     # Train the model
     print()
-    train = Trainer(
+    train = engine.Trainer(
         snsnet,
         optimizer,
         criterion,
