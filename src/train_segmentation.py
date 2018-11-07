@@ -73,11 +73,12 @@ if __name__ == "__main__":
         net = models.ENet(num_classes)
     elif model_str == "linknet":
         net = models.LinkNet(num_classes)
+    elif model_str == "dilatedunet":
+        net = models.DilatedUNet(classes=num_classes)
     else:
         raise ValueError(
-            "requested unknown model {}, expect one of (ENet, LinkNet)".format(
-                model_str
-            )
+            "requested unknown model {}, expect one of "
+            "(ENet, LinkNet, DilatedUNet)".format(model_str)
         )
 
     # Loss function: Combines the activation function nn.LogSoftmax() and the loss
