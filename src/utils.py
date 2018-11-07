@@ -9,6 +9,30 @@ import matplotlib.pyplot as plt
 from data.utils import rle_encode
 
 
+def to_onehot(tensor, num_classes):
+    """Converts a class tensor (integers) to a one hot tensor.
+
+    Arguments:
+        tensor (torch.Tensor): class tensor of size (N,) or (N, H, W) with integer
+            values in the range [0, num_classes - 1] to be converted into a one hot
+            tensor.
+        num_classes: total number of classes.
+
+    Returns:
+        A one hot representation of the input tensor with size (N, num_classes) or
+        (N, num_classes, H, W).
+    """
+    if tensor.dim() != 1 and tensor.dim() != 3:
+        raise ValueError("expected tensor of size 3 or 1, got {}".format(tensor.dim()))
+    elif tensor.max() > num_classes - 1 or tensor.min() < 0:
+        raise ValueError("tensor values outside range [0, {}]".format(num_classes - 1))
+    tensor = tensor.unsqueeze(1)
+    onehot = torch.zeros(tensor.size(0), num_classes, *tensor.size()[2:])
+    onehot.scatter_(1, tensor, 1)
+
+    return onehot
+
+
 def save_config(filepath, config):
     with open(filepath, "w") as outfile:
         json.dump(config, outfile, indent=4, sort_keys=True)
