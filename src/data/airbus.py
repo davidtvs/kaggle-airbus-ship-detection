@@ -19,6 +19,9 @@ class AirbusShipDataset(Dataset):
     clf_filename = "train_ship_segmentations_v2.csv"
     seg_filename = "train_ship_segmentations_seg.csv"
 
+    w_enet = [1.42340848, 47.8291847]
+    w_mfb = [0.5013302, 188.44108246]
+
     def __init__(
         self,
         root_dir,
