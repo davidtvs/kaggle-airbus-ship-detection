@@ -10,13 +10,18 @@ class Accuracy(metric.Metric):
 
     Arguments:
         name (str): a name for the metric. Default: acc.
+        eps (float, optional): small value to avoid division by zero. Default: 1e-6.
+
     """
 
-    def __init__(self, name="acc"):
+    def __init__(self, name="acc", eps=1e-6):
         super().__init__(name)
-        self.reset()
+        self.eps = eps
+        self.correct_pred = 0
+        self.total = 0
 
     def reset(self):
+        """Clears previously added predicted and target pairs."""
         self.correct_pred = 0
         self.total = 0
 
@@ -46,8 +51,6 @@ class Accuracy(metric.Metric):
         Returns:
             float: The accuracy.
         """
-        # Just in case we get a division by 0, ignore/hide the error
-        with np.errstate(divide="ignore", invalid="ignore"):
-            res = np.divide(self.correct_pred, self.total)
+        res = self.correct_pred / (self.total + self.eps)
 
         return res

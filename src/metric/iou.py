@@ -12,20 +12,22 @@ class IoU(metric.Metric):
 
         IoU = true_positive / (true_positive + false_positive + false_negative).
 
+    See: https://en.wikipedia.org/wiki/Jaccard_index
+
     Arguments:
         num_classes (int): number of classes in the classification problem
-        normalized (boolean, optional): Determines whether or not the confusion matrix
-            is normalized or not. Default: False.
         ignore_index (int or iterable, optional): Index of the classes to ignore when
             computing the IoU. Can be an int, or any iterable of ints. Default: None.
-        name (str): a name for the metric. Default: miou.
+        name (str, optional): a name for the metric. Default: miou.
+        eps (float, optional): small value to avoid division by zero. Default: 1e-6.
+
     """
 
-    def __init__(self, num_classes, normalized=False, ignore_index=None, name="miou"):
+    def __init__(self, num_classes, ignore_index=None, name="miou", eps=1e-6):
         super().__init__(name)
         self.num_classes = num_classes
-        self.normalized = normalized
-        self.conf_matrix = np.ndarray((num_classes, num_classes), dtype=np.int32)
+        self.eps = eps
+        self.conf_matrix = np.zeros((num_classes, num_classes), dtype=np.int32)
 
         if ignore_index is None:
             self.ignore_index = None
@@ -38,6 +40,7 @@ class IoU(metric.Metric):
                 raise ValueError("'ignore_index' must be an int or iterable")
 
     def reset(self):
+        """Clears previously added predicted and target pairs."""
         self.conf_matrix.fill(0)
 
     def add(self, predicted, target):
@@ -68,14 +71,12 @@ class IoU(metric.Metric):
     def value(self):
         """Computes the mean IoU.
 
-        The mean computation ignores NaN elements in the IoU array.
-
         Returns:
             float: the mean IoU.
         """
-        return np.nanmean(self.class_iou())
+        return np.mean(self.value_class())
 
-    def class_iou(self):
+    def value_class(self):
         """Computes the IoU per class.
 
         Returns:
@@ -90,8 +91,8 @@ class IoU(metric.Metric):
         false_positive = np.sum(self.conf_matrix, 0) - true_positive
         false_negative = np.sum(self.conf_matrix, 1) - true_positive
 
-        # Just in case we get a division by 0, ignore/hide the error
-        with np.errstate(divide="ignore", invalid="ignore"):
-            iou = true_positive / (true_positive + false_positive + false_negative)
+        iou = true_positive / (
+            true_positive + false_positive + false_negative + self.eps
+        )
 
         return iou
