@@ -3,13 +3,26 @@ import torch.nn as nn
 import utils
 
 
+class BCEWithLogitsLoss2d(nn.Module):
+    def __init__(self, weight=None, reduction="elementwise_mean", pos_weight=None):
+        super().__init__()
+        self.bce_logits = nn.BCEWithLogitsLoss(
+            weight=weight, reduction=reduction, pos_weight=pos_weight
+        )
+
+    def forward(self, input, target):
+        input = input.squeeze(1)
+        target = target.float()
+        return self.bce_logits(input, target)
+
+
 class FocalLossWithLogits(nn.Module):
     """Computes the focal loss with logits.
 
     The Focal Loss is designed to address the one-stage object detection scenario in
     which there is an extreme imbalance between foreground and background classes during
     training (e.g., 1:1000). Focal loss is defined as:
-    
+
     FL = alpha(1 - p)^gamma * CE(p, y)
     where p are the probabilities, after applying the Softmax layer to the logits,
     alpha is a balancing parameter, gamma is the focusing parameter, and CE(p, y) is the
