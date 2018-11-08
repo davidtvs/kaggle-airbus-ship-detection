@@ -67,15 +67,21 @@ if __name__ == "__main__":
     print()
     print("Generating segmentation dataset...")
     true_targets = targets == 1
+    true_positives = (predictions == 1) & (targets == 1)
     false_positives = (predictions == 1) & (targets == 0)
+    false_negatives = (predictions == 0) & (targets == 1)
+    print("True positives: {}".format(sum(true_positives)))
+    print("False positives: {}".format(sum(false_positives)))
+    print("False negatives: {}".format(sum(false_negatives)))
 
     # Select from the full training set the images that are either true positives or
     # false positives
     csv_path = os.path.join(config["dataset_dir"], dataset.clf_filename)
     df = pd.read_csv(csv_path).set_index("ImageId")
+    df = df.drop(index=dataset.train_corrupted, errors="ignore")
     image_id = df.index.unique()
     df = df.loc[(image_id[true_targets]) | (image_id[false_positives])]
 
-    csv_path = os.path.join(config["dataset_dir"], dataset.seg_filename)
-    df.to_csv(csv_path, index=False)
+    csv_path = os.path.join(os.path.dirname(args.config), dataset.seg_filename)
+    df.to_csv(csv_path)
     print("Done! Saved dataset for segmentation in {}".format(csv_path))

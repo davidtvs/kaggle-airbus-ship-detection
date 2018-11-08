@@ -4,7 +4,7 @@ import utils
 
 
 class FocalLoss(nn.Module):
-    def __init__(self, gamma=0, weight=1, reduction="mean"):
+    def __init__(self, gamma=2, weight=0.25, reduction="mean"):
         super().__init__()
         self.gamma = gamma
         self.weight = weight
