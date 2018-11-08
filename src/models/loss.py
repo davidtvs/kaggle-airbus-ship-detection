@@ -3,11 +3,36 @@ import torch.nn as nn
 import utils
 
 
-class FocalLoss(nn.Module):
-    def __init__(self, gamma=2, weight=0.25, reduction="mean"):
+class FocalLossWithLogits(nn.Module):
+    """Computes the focal loss with logits.
+
+    The Focal Loss is designed to address the one-stage object detection scenario in
+    which there is an extreme imbalance between foreground and background classes during
+    training (e.g., 1:1000). Focal loss is defined as:
+    
+    FL = alpha(1 - p)^gamma * CE(p, y)
+    where p are the probabilities, after applying the Softmax layer to the logits,
+    alpha is a balancing parameter, gamma is the focusing parameter, and CE(p, y) is the
+    cross entropy loss. When gamma=0 and alpha=1 the focal loss equals cross entropy.
+
+    See: https://arxiv.org/abs/1708.02002
+
+    Arguments:
+        num_classes (int): number of classes in the classification problem
+        gamma (float, optional): focusing parameter. Default: 2.
+        alpha (float, optional): balancing parameter. Default: 0.25.
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            'none' | 'mean' | 'sum'. 'none': no reduction will be applied,
+            'mean': the sum of the output will be divided by the number of
+            elements in the output, 'sum': the output will be summed. Default: 'mean'
+        eps (float, optional): small value to avoid division by zero. Default: 1e-6.
+
+    """
+
+    def __init__(self, gamma=2, alpha=0.25, reduction="mean"):
         super().__init__()
         self.gamma = gamma
-        self.weight = weight
+        self.alpha = alpha
         if reduction.lower() == "none":
             self.reduction_op = None
         elif reduction.lower() == "mean":
@@ -44,7 +69,7 @@ class FocalLoss(nn.Module):
 
         m = input.size(0)
         probabilities = nn.functional.softmax(input[range(m), target], dim=0)
-        focal = self.weight * (1 - probabilities).pow(self.gamma)
+        focal = self.alpha * (1 - probabilities).pow(self.gamma)
         ce = nn.functional.cross_entropy(input, target, reduction="none")
         loss = focal * ce
 
@@ -54,8 +79,28 @@ class FocalLoss(nn.Module):
             return loss
 
 
-class DiceLoss(nn.Module):
-    """https://github.com/pytorch/pytorch/issues/1249"""
+class DiceLossWithLogits(nn.Module):
+    """Computes the Sørensen–Dice loss with logits.
+
+    Dice_coefficient = 2 * intersection(X, Y) / (|X| + |Y|)
+    where, X and Y are sets of binary data, in this case, predictions and targets.
+    |X| and |Y| are the cardinalities of the corresponding sets.
+
+    The optimizer minimizes the loss function therefore:
+    Dice_loss = -Dice_coefficient
+    (min(-x) = max(x))
+
+    See: https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient
+
+    Arguments:
+        num_classes (int): number of classes in the classification problem
+        reduction (string, optional): Specifies the reduction to apply to the output:
+            'none' | 'mean' | 'sum'. 'none': no reduction will be applied,
+            'mean': the sum of the output will be divided by the number of
+            elements in the output, 'sum': the output will be summed. Default: 'mean'
+        eps (float, optional): small value to avoid division by zero. Default: 1e-6.
+
+    """
 
     def __init__(self, reduction="mean", eps=1e-6):
         super().__init__()
@@ -83,9 +128,9 @@ class DiceLoss(nn.Module):
             )
 
         if input.dim() == 4 and target.dim() == 3:
-            reduce_dims = (3, 2)
+            reduce_dims = (0, 3, 2)
         elif input.dim() == 2 and target.dim() == 1:
-            reduce_dims = 1
+            reduce_dims = 0
         else:
             raise ValueError(
                 "expected target dimension {} for input dimension {}, got {}".format(
@@ -96,10 +141,12 @@ class DiceLoss(nn.Module):
         target_onehot = utils.to_onehot(target, input.size(1))
         probabilities = nn.functional.softmax(input, 1)
 
-        # dice = 2 * (t * p) / (t^2 + p^2)
+        # Dice = 2 * intersection(X, Y) / (|X| + |Y|)
+        # X and Y are sets of binary data, in this case, probabilities and targets
+        # |X| and |Y| are the cardinalities of the corresponding sets
         num = torch.sum(target_onehot * probabilities, dim=reduce_dims)
-        den_t = torch.sum(target_onehot * target_onehot, dim=reduce_dims)
-        den_p = torch.sum(probabilities * probabilities, dim=reduce_dims)
+        den_t = torch.sum(target_onehot, dim=reduce_dims)
+        den_p = torch.sum(probabilities, dim=reduce_dims)
         loss = -2 * (num / (den_t + den_p + self.eps))
 
         if self.reduction_op is not None:
