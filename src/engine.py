@@ -156,7 +156,7 @@ class Trainer:
 
         # Statistics
         loss = loss.item() * inputs.size(0)
-        self.metrics.add(outputs.squeeze(), targets.squeeze())
+        self.metrics.add(outputs, targets)
 
         return loss
 

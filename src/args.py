@@ -44,8 +44,7 @@ def segmentation_dataset_args():
         "--config",
         "-c",
         type=str,
-        default="segmentation_dataset.json",
-        help="Path to the JSON configuration file. Default: segmentation_dataset.json",
+        help="Path to the JSON configuration file. Default: null",
     )
 
     return parser.parse_args()
