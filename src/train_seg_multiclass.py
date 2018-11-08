@@ -81,9 +81,7 @@ if __name__ == "__main__":
             "(ENet, LinkNet, DilatedUNet)".format(model_str)
         )
 
-    # Loss function: Combines the activation function nn.LogSoftmax() and the loss
-    # function nn.NLLLoss() into a single class. Therefore, it expects logits instead of
-    # probabilities.
+    # Loss function
     criterion = torch.nn.CrossEntropyLoss()
 
     def logits_to_pred(logits):
@@ -99,11 +97,25 @@ if __name__ == "__main__":
         return predictions
 
     # Optimizer: adam
-    optimizer = torch.optim.Adam(net.parameters(), lr=config["lr_rate"])
+    optimizer_name = config["optimizer"].lower()
+    if optimizer_name == "adam":
+        optimizer = torch.optim.Adam(net.parameters(), lr=config["lr_rate"])
+    elif optimizer_name == "rmsprop":
+        optimizer = torch.optim.RMSprop(net.parameters(), lr=config["lr_rate"])
+    elif optimizer_name == "sgd":
+        optimizer = torch.optim.SGD(
+            net.parameters(), lr=config["lr_rate"], momentum=0.9
+        )
+    else:
+        raise ValueError(
+            "unknown optimizer {}, expect one of (Adam, RMSprop, SGD)".format(
+                config["optimizer"]
+            )
+        )
 
     # If a model checkpoint has been specified try to load its weights
     start_epoch = 1
-    metrics = metric.MetricList([metric.IoU(num_classes), metric.Accuracy()])
+    metrics = metric.MetricList([metric.IoU(num_classes), metric.Dice(num_classes)])
     if args.model_checkpoint:
         print("Loading weights from {}...".format(args.model_checkpoint))
         checkpoint = torch.load(args.model_checkpoint, map_location=torch.device("cpu"))
