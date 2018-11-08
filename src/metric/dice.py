@@ -3,6 +3,74 @@ from metric import metric
 from utils import to_onehot
 
 
+class BinaryDice(metric.Metric):
+    """Computes the Sørensen–Dice coefficient for binary data.
+
+    Dice = 2 * intersection(X, Y) / (|X| + |Y|)
+    where, X and Y are sets of binary data, in this case, predictions and targets.
+    |X| and |Y| are the cardinalities of the corresponding sets.
+
+    See: https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient
+
+    Arguments:
+        name (str, optional): a name for the metric. Default: bin_dice.
+        eps (float, optional): small value to avoid division by zero. Default: 1e-6.
+
+    """
+
+    def __init__(self, name="bin_dice", eps=1e-6):
+        super().__init__(name)
+        self.eps = eps
+        self.intersection = 0
+        self.cardinality_p = 0
+        self.cardinality_t = 0
+
+    def reset(self):
+        """Clears previously added predicted and target pairs."""
+        self.intersection = 0
+        self.cardinality_p = 0
+        self.cardinality_t = 0
+
+    def add(self, predicted, target):
+        """Adds the predicted and target pair to the Dice coefficient computation.
+
+        Arguments:
+            predicted (torch.Tensor): a (N, *) tensor of predictions, where * means
+                any number of additional dimensions
+            target (torch.Tensor): a (N, *) tensor of targets, where * means any number
+                of additional dimensions
+
+        """
+        # Parameter check
+        if predicted.size() != target.size():
+            raise ValueError(
+                "size mismatch, {} != {}".format(predicted.size(), target.size())
+            )
+
+        # Flatten the tensor and convert to numpy
+        predicted = predicted.cpu().view(-1).numpy()
+        target = target.cpu().view(-1).numpy()
+
+        if tuple(np.unique(predicted)) not in [(0, 1), (0,), (1,)]:
+            raise ValueError("predicted values are not binary")
+        if tuple(np.unique(target)) not in [(0, 1), (0,), (1,)]:
+            raise ValueError("target values are not binary")
+
+        self.intersection += np.sum(target * predicted)
+        self.cardinality_t += np.sum(target)
+        self.cardinality_p += np.sum(predicted)
+
+    def value(self):
+        """Computes the Dice coefficient.
+
+        Returns:
+            float: the Dice coefficient.
+        """
+        return 2 * (
+            self.intersection / (self.cardinality_t + self.cardinality_p + self.eps)
+        )
+
+
 class Dice(metric.Metric):
     """Computes the Sørensen–Dice coefficient per class and corresponding mean.
 
@@ -38,7 +106,7 @@ class Dice(metric.Metric):
 
         Arguments:
             predicted (torch.Tensor): A (N, H, W) or a (H, W) tensor of integer encoded
-                target values in the range [0, num_classes-1].
+                predictions in the range [0, num_classes-1].
             target (torch.Tensor): A (N, H, W) or a (H, W) tensor of integer encoded
                 target values in the range [0, num_classes-1].
 

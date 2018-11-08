@@ -2,12 +2,79 @@ import numpy as np
 from metric import metric, utils
 
 
+class BinaryIoU(metric.Metric):
+    """Computes the intersection over union (IoU) for binary data.
+
+    The intersection over union (IoU) is defined as:
+
+        IoU = true_positive / (true_positive + false_positive + false_negative).
+
+    See: https://en.wikipedia.org/wiki/Jaccard_index
+
+    Arguments:
+        name (str, optional): a name for the metric. Default: bin_miou.
+        eps (float, optional): small value to avoid division by zero. Default: 1e-6.
+
+    """
+
+    def __init__(self, name="bin_iou", eps=1e-6):
+        super().__init__(name)
+        self.eps = eps
+        self.true_positives = 0
+        self.false_positives = 0
+        self.false_negatives = 0
+
+    def reset(self):
+        """Clears previously added predicted and target pairs."""
+        self.true_positives = 0
+        self.false_positives = 0
+        self.false_negatives = 0
+
+    def add(self, predicted, target):
+        """Adds the predicted and target pair to the IoU metric.
+
+        Arguments:
+            predicted (torch.Tensor): a (N, *) tensor of predictions, where * means
+                any number of additional dimensions
+            target (torch.Tensor): a (N, *) tensor of targets, where * means any number
+                of additional dimensions
+
+        """
+        # Parameter check
+        if predicted.size() != target.size():
+            raise ValueError(
+                "size mismatch, {} != {}".format(predicted.size(), target.size())
+            )
+
+        # Flatten the tensor and convert to numpy
+        predicted = predicted.cpu().view(-1).numpy()
+        target = target.cpu().view(-1).numpy()
+
+        if tuple(np.unique(predicted)) not in [(0, 1), (0,), (1,)]:
+            raise ValueError("predicted values are not binary")
+        elif tuple(np.unique(target)) not in [(0, 1), (0,), (1,)]:
+            raise ValueError("target values are not binary")
+
+        self.true_positives = np.sum((predicted == 1) & (target == 1))
+        self.false_positives = np.sum((predicted == 1) & (target == 0))
+        self.false_negatives = np.sum((predicted == 0) & (target == 1))
+
+    def value(self):
+        """Computes the IoU.
+
+        Returns:
+            float: the IoU.
+        """
+        return self.true_positives / (
+            self.true_positives + self.false_positives + self.false_negatives + self.eps
+        )
+
+
 class IoU(metric.Metric):
     """Computes the intersection over union (IoU) per class and corresponding
     mean (mIoU).
 
-    Intersection over union (IoU) is a common evaluation metric for semantic
-    segmentation. The predictions are first accumulated in a confusion matrix
+    The predictions are first accumulated in a confusion matrix
     and the IoU is computed from it as follows:
 
         IoU = true_positive / (true_positive + false_positive + false_negative).
