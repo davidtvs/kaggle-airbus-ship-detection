@@ -3,19 +3,6 @@ import torch.nn as nn
 import utils
 
 
-class BCE2dWithLogitsLoss(nn.Module):
-    def __init__(self, weight=None, reduction="elementwise_mean", pos_weight=None):
-        super().__init__()
-        self.bce_logits = nn.BCEWithLogitsLoss(
-            weight=weight, reduction=reduction, pos_weight=pos_weight
-        )
-
-    def forward(self, input, target):
-        input = input.squeeze(1)
-        target = target.float()
-        return self.bce_logits(input, target)
-
-
 class BinaryFocalWithLogitsLoss(nn.Module):
     """Computes the focal loss with logits for binary data.
 
@@ -23,7 +10,7 @@ class BinaryFocalWithLogitsLoss(nn.Module):
     which there is an extreme imbalance between foreground and background classes during
     training (e.g., 1:1000). Focal loss is defined as:
 
-    FL = alpha(1 - p)^gamma * CE(p, y)
+        FL = alpha(1 - p)^gamma * CE(p, y)
     where p are the probabilities, after applying the sigmoid to the logits, alpha is a
     balancing parameter, gamma is the focusing parameter, and CE(p, y) is the
     cross entropy loss. When gamma=0 and alpha=1 the focal loss equals cross entropy.
@@ -92,7 +79,7 @@ class FocalWithLogitsLoss(nn.Module):
     which there is an extreme imbalance between foreground and background classes during
     training (e.g., 1:1000). Focal loss is defined as:
 
-    FL = alpha(1 - p)^gamma * CE(p, y)
+        FL = alpha(1 - p)^gamma * CE(p, y)
     where p are the probabilities, after applying the softmax layer to the logits,
     alpha is a balancing parameter, gamma is the focusing parameter, and CE(p, y) is the
     cross entropy loss. When gamma=0 and alpha=1 the focal loss equals cross entropy.
@@ -163,14 +150,16 @@ class FocalWithLogitsLoss(nn.Module):
 class BinaryDiceWithLogitsLoss(nn.Module):
     """Computes the Sørensen–Dice loss with logits for binary data.
 
-    Dice_coefficient = 2 * intersection(X, Y) / (|X| + |Y|)
+        DC = 2 * intersection(X, Y) / (|X| + |Y|)
     where, X and Y are sets of binary data, in this case, probabilities and targets.
     |X| and |Y| are the cardinalities of the corresponding sets. Probabilities are
     computed using the sigmoid.
 
     The optimizer minimizes the loss function therefore:
-    Dice_loss = -Dice_coefficient
-    (min(-x) = max(x))
+        DL = -DC (min(-x) = max(x))
+    To make the loss positive (convenience) and because the coefficient is within
+    [0, -1], subtract 1.
+        DL = 1 - DC
 
     See: https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient
 
@@ -215,7 +204,7 @@ class BinaryDiceWithLogitsLoss(nn.Module):
         num = torch.sum(target * probabilities)
         den_t = torch.sum(target)
         den_p = torch.sum(probabilities)
-        loss = -2 * (num / (den_t + den_p + self.eps))
+        loss = 1 - (2 * (num / (den_t + den_p + self.eps)))
 
         if self.reduction_op is not None:
             return self.reduction_op(loss)
@@ -226,14 +215,16 @@ class BinaryDiceWithLogitsLoss(nn.Module):
 class DiceWithLogitsLoss(nn.Module):
     """Computes the Sørensen–Dice loss with logits.
 
-    Dice_coefficient = 2 * intersection(X, Y) / (|X| + |Y|)
+        DC = 2 * intersection(X, Y) / (|X| + |Y|)
     where, X and Y are sets of binary data, in this case, predictions and targets.
     |X| and |Y| are the cardinalities of the corresponding sets. Probabilities are
     computed using softmax.
 
     The optimizer minimizes the loss function therefore:
-    Dice_loss = -Dice_coefficient
-    (min(-x) = max(x))
+        DL = -DC (min(-x) = max(x))
+    To make the loss positive (convenience) and because the coefficient is within
+    [0, -1], subtract 1.
+        DL = 1 - DC
 
     See: https://en.wikipedia.org/wiki/S%C3%B8rensen%E2%80%93Dice_coefficient
 
@@ -291,9 +282,37 @@ class DiceWithLogitsLoss(nn.Module):
         num = torch.sum(target_onehot * probabilities, dim=reduce_dims)
         den_t = torch.sum(target_onehot, dim=reduce_dims)
         den_p = torch.sum(probabilities, dim=reduce_dims)
-        loss = -2 * (num / (den_t + den_p + self.eps))
+        loss = 1 - (2 * (num / (den_t + den_p + self.eps)))
 
         if self.reduction_op is not None:
             return self.reduction_op(loss)
         else:
             return loss
+
+
+class BCE_BDWithLogitsLoss(nn.Module):
+    def __init__(self, reduction="mean"):
+        super().__init__()
+        self.bdl_logits = BinaryDiceWithLogitsLoss(reduction=reduction)
+        bce_reduction = reduction
+        if reduction == "mean":
+            bce_reduction = "elementwise_mean"
+        self.bce_logits = nn.BCEWithLogitsLoss(reduction=bce_reduction)
+
+    def forward(self, input, target):
+        return self.bce_logits(input, target) + self.bdl_logits(input, target)
+
+
+class BCE_LogBDWithLogitsLoss(nn.Module):
+    def __init__(self, reduction="mean"):
+        super().__init__()
+        self.bdl_logits = BinaryDiceWithLogitsLoss(reduction=reduction)
+        bce_reduction = reduction
+        if reduction == "mean":
+            bce_reduction = "elementwise_mean"
+        self.bce_logits = nn.BCEWithLogitsLoss(reduction=bce_reduction)
+
+    def forward(self, input, target):
+        return self.bce_logits(input, target) - torch.log(
+            1 - self.bdl_logits(input, target)
+        )
