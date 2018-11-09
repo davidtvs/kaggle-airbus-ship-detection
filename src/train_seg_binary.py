@@ -23,7 +23,9 @@ if __name__ == "__main__":
     # Compose the image transforms to be applied to the data
     input_dim = (config["img_h"], config["img_w"])
     image_transform = tf.Compose([tf.Resize(input_dim), tf.ToTensor()])
-    target_transform = tf.Compose([tf.Resize(input_dim), ctf.ToLongTensor()])
+    target_transform = tf.Compose(
+        [tf.Resize(input_dim), tf.ToTensor(), ctf.Threshold()]
+    )
 
     # Initialize the datasets and dataloaders
     print("Loading training dataset...")
@@ -83,7 +85,7 @@ if __name__ == "__main__":
         )
 
     # Loss function
-    criterion = loss.BCE2dWithLogitsLoss()
+    criterion = loss.BinaryFocalWithLogitsLoss()
 
     def logits_to_pred(logits):
         """Function to transform logits into predictions.
@@ -97,7 +99,7 @@ if __name__ == "__main__":
         Returns:
             torch.Tensor: The predictions.
         """
-        return torch.sigmoid(logits).round().squeeze(1)
+        return torch.sigmoid(logits).round()
 
     # Optimizer: adam
     optimizer_name = config["optimizer"].lower()

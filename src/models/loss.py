@@ -70,7 +70,7 @@ class BinaryFocalWithLogitsLoss(nn.Module):
         # Following the paper: probabilities = probabilities if y=1; otherwise,
         # probabilities = 1-probabilities
         probabilities = torch.sigmoid(input)
-        probabilities[target != 1] = 1 - probabilities[target != 1]
+        probabilities = torch.where(target == 1, probabilities, 1 - probabilities)
 
         # Compute the loss
         focal = self.alpha * (1 - probabilities).pow(self.gamma)
