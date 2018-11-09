@@ -86,7 +86,9 @@ def save_summary(filepath, args, config, losses, metrics):
         json.dump(out, summary_file, indent=4, sort_keys=True)
 
 
-def imshow_batch(images, targets=None):
+def imshow_batch(
+    images, targets=None, nrow=8, padding=2, scale_each=False, pad_value=0
+):
     """Displays a batch of images and, optionally, of targets.
 
     Arguments:
@@ -101,14 +103,22 @@ def imshow_batch(images, targets=None):
         )
 
     # Make a grid with the images
-    images = torchvision.utils.make_grid(images).numpy()
+    images = torchvision.utils.make_grid(
+        images, nrow=nrow, padding=padding, scale_each=scale_each, pad_value=pad_value
+    ).numpy()
 
     # Check if targets is a Tensor. If it is, display it; otherwise, show the images
     if isinstance(targets, torch.Tensor) and targets.dim() == 4:
-        targets = torchvision.utils.make_grid(targets).numpy()
+        targets = torchvision.utils.make_grid(
+            targets,
+            nrow=nrow,
+            padding=padding,
+            scale_each=scale_each,
+            pad_value=pad_value,
+        ).numpy()
 
         fig, axarr = plt.subplots(3, 1)
-        axarr[0].set_title("Batch of samples")
+        axarr[0].set_title("Batch of images")
         axarr[0].axis("off")
         axarr[0].imshow(np.transpose(images, (1, 2, 0)))
 
@@ -116,7 +126,7 @@ def imshow_batch(images, targets=None):
         axarr[1].axis("off")
         axarr[1].imshow(np.transpose(targets, (1, 2, 0)))
 
-        axarr[2].set_title("Targets overlayed with samples")
+        axarr[2].set_title("Targets overlayed with images")
         axarr[2].axis("off")
         axarr[2].imshow(np.transpose(images, (1, 2, 0)))
         axarr[2].imshow(np.transpose(targets, (1, 2, 0)), alpha=0.5)
