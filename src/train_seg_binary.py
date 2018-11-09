@@ -1,5 +1,6 @@
 import os
 import torch
+import torch.nn as nn
 import torch.utils.data as data
 import torchvision.transforms as tf
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -81,11 +82,26 @@ if __name__ == "__main__":
     else:
         raise ValueError(
             "requested unknown model {}, expect one of "
-            "(ENet, LinkNet, DilatedUNet)".format(model_str)
+            "(ENet, LinkNet, DilatedUNet)".format(config["model"])
         )
 
     # Loss function
-    criterion = loss.BinaryFocalWithLogitsLoss()
+    loss_name = config["loss"].lower()
+    if loss_name == "bce":
+        criterion = nn.BCEWithLogitsLoss()
+    elif loss_name == "bfl":
+        criterion = loss.BinaryFocalWithLogitsLoss()
+    elif loss_name == "bdl":
+        criterion = loss.BinaryDiceWithLogitsLoss()
+    elif loss_name == "bce_bdl":
+        criterion = loss.BCE_BDWithLogitsLoss()
+    elif loss_name == "bce_logbdl":
+        criterion = loss.BCE_LogBDWithLogitsLoss()
+    else:
+        raise ValueError(
+            "requested unknown loss {}, expect one of "
+            "(bce, bfl, bdl, bce_bdl, bce_logbdl)".format(config["loss"])
+        )
 
     def logits_to_pred(logits):
         """Function to transform logits into predictions.
