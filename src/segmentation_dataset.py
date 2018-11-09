@@ -2,7 +2,7 @@ import os
 import pandas as pd
 import torch
 import torch.utils.data as data
-import torchvision.transforms as transforms
+import torchvision.transforms as tf
 import utils
 import transforms as ctf
 import models.classifier as classifier
@@ -16,7 +16,6 @@ if __name__ == "__main__":
     args = segmentation_dataset_args()
     config = utils.load_config(args.config)
 
-    num_classes = 1
     input_dim = (config["img_h"], config["img_w"])
     checkpoint_path = config["model_checkpoint"]
 
@@ -26,12 +25,8 @@ if __name__ == "__main__":
         raise ValueError("the model checkpoint doesn't exist")
 
     # Compose the image transforms to be applied to the data
-    image_transform = transforms.Compose(
-        [transforms.Resize(input_dim), transforms.ToTensor()]
-    )
-    target_transform = transforms.Compose(
-        [transforms.Resize(input_dim), ctf.TargetHasShipTensor()]
-    )
+    image_transform = tf.Compose([tf.Resize(input_dim), tf.ToTensor()])
+    target_transform = tf.Compose([tf.Resize(input_dim), ctf.TargetHasShipTensor()])
 
     # Initialize the dataset in training mode without data split
     print("Loading training dataset...")
@@ -54,6 +49,7 @@ if __name__ == "__main__":
 
     # Initialize ship or no-ship detection network and then laod the weigths
     print("Loading ship detection model...")
+    num_classes = 1
     net = classifier.resnet(config["resnet_size"], num_classes)
 
     print("Loading model weights from {}...".format(checkpoint_path))
@@ -62,10 +58,12 @@ if __name__ == "__main__":
 
     print()
     print("Generating predictions...")
-    predictions, targets = predict(net, dataloader, config["device"])
+    predictions, targets = predict(
+        net, dataloader, output_fn=utils.logits_to_pred_sigmoid, device=config["device"]
+    )
 
     print()
-    print("Generating segmentation dataset...")
+    print("Generating training dataset for segmentation...")
     true_targets = targets == 1
     true_positives = (predictions == 1) & (targets == 1)
     false_positives = (predictions == 1) & (targets == 0)
@@ -84,4 +82,4 @@ if __name__ == "__main__":
 
     csv_path = os.path.join(os.path.dirname(args.config), dataset.seg_filename)
     df.to_csv(csv_path)
-    print("Done! Saved dataset for segmentation in {}".format(csv_path))
+    print("Done! Saved training dataset for segmentation in {}".format(csv_path))

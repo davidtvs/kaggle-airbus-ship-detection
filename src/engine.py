@@ -161,7 +161,9 @@ class Trainer:
         return loss
 
 
-def predict(model, dataloader, device):
+def predict(model, dataloader, output_fn=None, device=None):
+    if device is None:
+        device = "cuda:0" if torch.cuda.is_available() else "cpu"
     device = torch.device(device)
     model = model.to(device).eval()
 
@@ -177,16 +179,17 @@ def predict(model, dataloader, device):
         with torch.no_grad():
             # Do a froward pass with the images and apply the sigmoid function to get
             # the prediction
-            logits = model(images)
+            outputs = model(images)
             # Note: Because gradients are not computed there is no need to detach from
             # the graph
-            pred = torch.sigmoid(logits).round_().cpu().numpy()
+            if output_fn is not None:
+                outputs = output_fn(outputs)
 
         if all_pred is None:
-            all_pred = pred
+            all_pred = outputs
             all_targets = targets.numpy()
         else:
-            all_pred = np.concatenate((all_pred, pred))
+            all_pred = np.concatenate((all_pred, outputs))
             all_targets = np.concatenate((all_targets, targets.numpy()))
 
     time_elapsed = time.time() - since

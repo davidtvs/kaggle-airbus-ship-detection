@@ -103,20 +103,6 @@ if __name__ == "__main__":
             "(bce, bfl, bdl, bce_bdl, bce_logbdl)".format(config["loss"])
         )
 
-    def logits_to_pred(logits):
-        """Function to transform logits into predictions.
-
-        Applies the sigmoid function to the logits and rounds the result
-        (threshold at 0.5).
-
-        Arguments:
-            logits (torch.Tensor): logits output by the model.
-
-        Returns:
-            torch.Tensor: The predictions.
-        """
-        return torch.sigmoid(logits).round()
-
     # Optimizer: adam
     optimizer_name = config["optimizer"].lower()
     if optimizer_name == "adam":
@@ -183,7 +169,9 @@ if __name__ == "__main__":
         model_checkpoint=model_checkpoint,
         device=config["device"],
     )
-    net, checkpoint = train.fit(train_loader, val_loader, output_fn=logits_to_pred)
+    net, checkpoint = train.fit(
+        train_loader, val_loader, output_fn=utils.logits_to_pred_sigmoid
+    )
 
     # Save a summary file containing the args, losses, and metrics
     config_path = os.path.join(checkpoint_dir, os.path.basename(args.config))

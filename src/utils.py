@@ -33,6 +33,21 @@ def to_onehot(tensor, num_classes):
     return onehot
 
 
+def logits_to_pred_sigmoid(logits):
+    """Function to transform logits into predictions.
+
+    Applies the sigmoid function to the logits and rounds the result
+    (threshold at 0.5).
+
+    Arguments:
+        logits (torch.Tensor): logits output by the model.
+
+    Returns:
+        torch.Tensor: The predictions.
+    """
+    return torch.sigmoid(logits).round()
+
+
 def save_config(filepath, config):
     with open(filepath, "w") as outfile:
         json.dump(config, outfile, indent=4, sort_keys=True)
