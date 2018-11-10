@@ -2,6 +2,13 @@ import numpy as np
 from metric import metric, utils
 
 
+def binary_iou(predicted, target, eps=1e-6):
+    tp = np.sum(target * predicted)
+    fn = np.sum(target) - tp
+    fp = np.sum(predicted) - tp
+    return tp / (tp + fn + fp + 1e-6)
+
+
 class BinaryIoU(metric.Metric):
     """Computes the intersection over union (IoU) for binary data.
 
@@ -20,15 +27,11 @@ class BinaryIoU(metric.Metric):
     def __init__(self, name="bin_iou", eps=1e-6):
         super().__init__(name)
         self.eps = eps
-        self.true_positives = 0
-        self.false_positives = 0
-        self.false_negatives = 0
+        self.iou_history = []
 
     def reset(self):
         """Clears previously added predicted and target pairs."""
-        self.true_positives = 0
-        self.false_positives = 0
-        self.false_negatives = 0
+        self.iou_history = []
 
     def add(self, predicted, target):
         """Adds the predicted and target pair to the IoU metric.
@@ -55,9 +58,7 @@ class BinaryIoU(metric.Metric):
         elif tuple(np.unique(target)) not in [(0, 1), (0,), (1,)]:
             raise ValueError("target values are not binary")
 
-        self.true_positives = np.sum((predicted == 1) & (target == 1))
-        self.false_positives = np.sum((predicted == 1) & (target == 0))
-        self.false_negatives = np.sum((predicted == 0) & (target == 1))
+        self.iou_history.append(binary_iou(predicted, target, eps=self.eps))
 
     def value(self):
         """Computes the IoU.
@@ -65,9 +66,7 @@ class BinaryIoU(metric.Metric):
         Returns:
             float: the IoU.
         """
-        return self.true_positives / (
-            self.true_positives + self.false_positives + self.false_negatives + self.eps
-        )
+        return np.mean(self.iou_history)
 
 
 class IoU(metric.Metric):
