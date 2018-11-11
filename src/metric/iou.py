@@ -48,15 +48,14 @@ class BinaryIoU(metric.Metric):
             raise ValueError(
                 "size mismatch, {} != {}".format(predicted.size(), target.size())
             )
+        elif tuple(predicted.unique(sorted=True)) not in [(0, 1), (0,), (1,)]:
+            raise ValueError("predicted values are not binary")
+        elif tuple(target.unique(sorted=True)) not in [(0, 1), (0,), (1,)]:
+            raise ValueError("target values are not binary")
 
         # Flatten the tensor and convert to numpy
-        predicted = predicted.cpu().view(-1).numpy()
-        target = target.cpu().view(-1).numpy()
-
-        if tuple(np.unique(predicted)) not in [(0, 1), (0,), (1,)]:
-            raise ValueError("predicted values are not binary")
-        elif tuple(np.unique(target)) not in [(0, 1), (0,), (1,)]:
-            raise ValueError("target values are not binary")
+        predicted = predicted.view(-1).cpu().numpy()
+        target = target.view(-1).cpu().numpy()
 
         self.iou_history.append(binary_iou(predicted, target, eps=self.eps))
 
@@ -114,9 +113,9 @@ class IoU(metric.Metric):
 
         Arguments:
             predicted (torch.Tensor): A (N, H, W) or a (H, W) tensor of integer encoded
-                target values in the range [0, num_classes-1].
+                predictions in the range [0, num_classes-1].
             target (torch.Tensor): A (N, H, W) or a (H, W) tensor of integer encoded
-                target values in the range [0, num_classes-1].
+                targets in the range [0, num_classes-1].
 
         """
         # Parameter check

@@ -4,6 +4,7 @@ import json
 import torch
 import torchvision
 import numpy as np
+from scipy.ndimage import label
 import pandas as pd
 import matplotlib.pyplot as plt
 from data.utils import rle_encode
@@ -94,6 +95,57 @@ def logits_to_pred_sigmoid(logits):
         torch.Tensor: The predictions.
     """
     return torch.sigmoid(logits).round()
+
+
+def split_ships(input, min_size=50, max_ships_error=100):
+    """Takes a mask of ships and splits them into different individual masks.
+
+    Uses a structuring element to define connected blobs (ships in this case),
+    scipy.ndimage.label does all the work.
+    See: https://docs.scipy.org/doc/scipy/reference/generated/scipy.ndimage.label.html
+
+    Arguments:
+        input (numpy.ndarray): the mask of ships to split with size (H, W).
+        min_size(int, optional): only blobs above this size in pixels are labeled as
+            ships, essentially noise removal. Default: 18.
+        max_ships_error (int, optional): maximum number of ships allowed in a single
+            image. If surpassed, a ValueError is raised. Default: 100.
+
+    Returns:
+        numpy.ndarray: the masks of individual ships with size (n, H, W), where n is the
+        number of ships. If there are no ships, returns a array of size (1, H, W) filled
+        with zeros.
+
+    """
+    # No blobs/ships, return empty mask
+    if np.sum(input) == 0:
+        return np.expand_dims(input, 0)
+
+    # Labels blobs/ships in the image
+    labeled_ships, num_ships = label(input)
+    # Check if they are above a minimum size
+    blob_sizes = np.bincount(labeled_ships.ravel())
+    too_small = blob_sizes < min_size
+    if np.sum(too_small) > 0:
+        # Labels that are below that size are set to background, the remaining objects
+        # are relabeled
+        mask = too_small[labeled_ships]
+        labeled_ships[mask] = 0
+        labeled_ships, num_ships = label(labeled_ships)
+
+    if np.sum(num_ships > max_ships_error):
+        raise ValueError(
+            "too many ships found {}, increase min_size to remove smaller "
+            "ships that are likely to be noise, or increase max_ships_error to allow "
+            "more ships to be found and processed".format(num_ships)
+        )
+
+    # For convenience, each ship is isolated in an image
+    # Achieving this is equivalent to converting labeled_ships into its one hot form
+    # and then removing the first channel which is the background
+    out = to_onehot_np(labeled_ships, num_ships + 1)[1:]
+
+    return out
 
 
 def save_config(filepath, config):

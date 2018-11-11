@@ -123,7 +123,7 @@ if __name__ == "__main__":
     # If a model checkpoint has been specified try to load its weights
     start_epoch = 1
     metrics = metric.MetricList(
-        [metric.BinaryIoU(), metric.BinaryDice(), metric.Accuracy()]
+        [metric.AirbusFScoreApprox(), metric.BinaryIoU(), metric.BinaryDice()]
     )
     if args.model_checkpoint:
         print("Loading weights from {}...".format(args.model_checkpoint))
