@@ -162,35 +162,25 @@ class Trainer:
 
 
 def predict(model, dataloader, output_fn=None, device=None):
+    pred_list = list(
+        predict_yield_batch(model, dataloader, output_fn=output_fn, device=device)
+    )
+    predictions = np.concatenate(pred_list, axis=0)
+
+    return predictions
+
+
+def predict_yield_batch(model, dataloader, output_fn=None, device=None):
     if device is None:
         device = "cuda:0" if torch.cuda.is_available() else "cpu"
     device = torch.device(device)
     model = model.to(device).eval()
 
     # Get the current time to know how much time it took to make the predictions
-    all_pred = None
-    all_targets = None
     since = time.time()
-    for step, (images, targets) in enumerate(tqdm(dataloader)):
+    for step, (images, _) in enumerate(tqdm(dataloader)):
         images = images.to(device)
-
-        # We don't want to compute gradients, deactivate the autograd engine, this also
-        # saves a lot of memory
-        with torch.no_grad():
-            # Do a froward pass with the images and apply the sigmoid function to get
-            # the prediction
-            outputs = model(images)
-            # Note: Because gradients are not computed there is no need to detach from
-            # the graph
-            if output_fn is not None:
-                outputs = output_fn(outputs)
-
-        if all_pred is None:
-            all_pred = outputs
-            all_targets = targets.numpy()
-        else:
-            all_pred = np.concatenate((all_pred, outputs))
-            all_targets = np.concatenate((all_targets, targets.numpy()))
+        yield predict_batch(model, images, output_fn=output_fn)
 
     time_elapsed = time.time() - since
     print(
@@ -199,7 +189,20 @@ def predict(model, dataloader, output_fn=None, device=None):
         )
     )
 
-    return all_pred.squeeze(), all_targets.squeeze()
+
+def predict_batch(model, input, output_fn=None):
+    # We don't want to compute gradients, deactivate the autograd engine, this also
+    # saves a lot of memory
+    with torch.no_grad():
+        # Do a froward pass with the images and apply the sigmoid function to get
+        # the prediction
+        outputs = model(input)
+        # Note: Because gradients are not computed there is no need to detach from
+        # the graph
+        if output_fn is not None:
+            outputs = output_fn(outputs)
+
+    return outputs.cpu().numpy()
 
 
 class EarlyStopping(object):

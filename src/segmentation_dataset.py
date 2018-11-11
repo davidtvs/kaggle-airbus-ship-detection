@@ -1,12 +1,14 @@
 import os
+from tqdm import tqdm
 import pandas as pd
+import numpy as np
 import torch
 import torch.utils.data as data
 import torchvision.transforms as tf
 import utils
 import transforms as ctf
 import models.classifier as classifier
-from engine import predict
+from engine import predict_batch
 from args import segmentation_dataset_args
 from data.airbus import AirbusShipDataset
 
@@ -37,6 +39,7 @@ if __name__ == "__main__":
         transform=image_transform,
         target_transform=target_transform,
         train_val_split=0.0,
+        data_slice=0.001,
     )
     dataloader = data.DataLoader(
         dataset,
@@ -58,9 +61,20 @@ if __name__ == "__main__":
 
     print()
     print("Generating predictions...")
-    predictions, targets = predict(
-        net, dataloader, output_fn=utils.logits_to_pred_sigmoid, device=config["device"]
-    )
+    # Get the requested device and move the model to that device in evaluation mode then
+    # make predictions batch by batch
+    device = torch.device(config["device"])
+    net = net.to(device).eval()
+    target_list = []
+    pred_list = []
+    for step, (img_batch, target_batch) in enumerate(tqdm(dataloader)):
+        img_batch = img_batch.to(device)
+        pred_batch = predict_batch(net, img_batch, utils.logits_to_pred_sigmoid)
+        pred_list.append(pred_batch)
+        target_list.append(target_batch)
+
+    predictions = np.concatenate(pred_list, axis=0)
+    targets = np.concatenate(target_list, axis=0)
 
     print()
     print("Generating training dataset for segmentation...")
@@ -68,9 +82,9 @@ if __name__ == "__main__":
     true_positives = (predictions == 1) & (targets == 1)
     false_positives = (predictions == 1) & (targets == 0)
     false_negatives = (predictions == 0) & (targets == 1)
-    print("True positives: {}".format(sum(true_positives)))
-    print("False positives: {}".format(sum(false_positives)))
-    print("False negatives: {}".format(sum(false_negatives)))
+    print("True positives: {}".format(np.sum(true_positives)))
+    print("False positives: {}".format(np.sum(false_positives)))
+    print("False negatives: {}".format(np.sum(false_negatives)))
 
     # Select from the full training set the images that are either true positives or
     # false positives
@@ -82,4 +96,4 @@ if __name__ == "__main__":
 
     csv_path = os.path.join(os.path.dirname(args.config), dataset.seg_filename)
     df.to_csv(csv_path)
-    print("Done! Saved training dataset for segmentation in {}".format(csv_path))
+    print("Done! Saved training dataset for segmentation in: {}".format(csv_path))
