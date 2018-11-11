@@ -80,10 +80,9 @@ class AirbusFScoreApprox(metric.Metric):
         beta (int, optional): recall-precision weight. Default: 2.
         thresholds (numpy.ndarray, optional): IoU thresholds.
             Default: np.arange(0.5, 1, 0.05).
-        min_size(int, optional): only blobs above this size in pixels are labeled as
-            ships, essentially noise removal. Default: 18.
-        max_ships_error (int, optional): maximum number of ships allowed in a single
-            image. If surpassed, a ValueError is raised. Default: 100.
+        max_ships(int, optional): maximum number of ships allowed in a single
+            image. The smaller ships are set to background until the number of ships is
+            below this threshold. Default: 30.
         name (str, optional): a name for the metric. Default: fscore_approx.
 
     """
@@ -92,15 +91,13 @@ class AirbusFScoreApprox(metric.Metric):
         self,
         beta=2,
         thresholds=np.arange(0.5, 1, 0.05),
-        min_size=18,
-        max_ships_error=30,
+        max_ships=30,
         name="fscore_approx",
     ):
         super().__init__(name)
         self.thresholds = thresholds
         self.beta = beta
-        self.min_size = min_size
-        self.max_ships_error = max_ships_error
+        self.max_ships = max_ships
         self.fscore_history = []
 
     def reset(self):
@@ -131,18 +128,8 @@ class AirbusFScoreApprox(metric.Metric):
 
         for p, t in zip(predicted, target):
             # Try to split the segmentation mask in into one mask per ship
-            # This process might raise an error if too many ships are found, especially
-            # during the early stages of training.
-            try:
-                predicted_ships = split_ships(p, self.min_size, self.max_ships_error)
-            except ValueError:
-                # Catch the error and give this image a 0 score.
-                self.fscore_history.append(0)
-                break
-
-            # Note that here we want to fail if too many ships are found, it should
-            # never happen
-            target_ships = split_ships(t, min_size=0)
+            predicted_ships = split_ships(p, max_ships=self.max_ships)
+            target_ships = split_ships(t, max_ships=self.max_ships)
             score = f_score(
                 predicted_ships,
                 target_ships,

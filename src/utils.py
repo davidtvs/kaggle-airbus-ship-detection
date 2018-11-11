@@ -5,9 +5,7 @@ import torch
 import torchvision
 import numpy as np
 from scipy.ndimage import label
-import pandas as pd
 import matplotlib.pyplot as plt
-from data.utils import rle_encode
 
 
 def to_onehot_np(y, num_classes=None, axis=0, dtype="float32"):
@@ -97,7 +95,7 @@ def logits_to_pred_sigmoid(logits):
     return torch.sigmoid(logits).round()
 
 
-def split_ships(input, min_size=50, max_ships_error=100):
+def split_ships(input, max_ships=30, on_max_error=False):
     """Takes a mask of ships and splits them into different individual masks.
 
     Uses a structuring element to define connected blobs (ships in this case),
@@ -106,10 +104,12 @@ def split_ships(input, min_size=50, max_ships_error=100):
 
     Arguments:
         input (numpy.ndarray): the mask of ships to split with size (H, W).
-        min_size(int, optional): only blobs above this size in pixels are labeled as
-            ships, essentially noise removal. Default: 18.
-        max_ships_error (int, optional): maximum number of ships allowed in a single
-            image. If surpassed, a ValueError is raised. Default: 100.
+        max_ships(int, optional): maximum number of ships allowed in a single
+            image. If surpassed and on_max_error is True a ValueError is raised; if
+            on_max_error is False, the smaller blobs are set to background until the
+            number of ships is below this threshold. Default: 30.
+        on_max_error (int, optional): if True, raises an error if more than max_ships
+            are found in a single image. Default: False.
 
     Returns:
         numpy.ndarray: the masks of individual ships with size (n, H, W), where n is the
@@ -117,32 +117,39 @@ def split_ships(input, min_size=50, max_ships_error=100):
         with zeros.
 
     """
+    # The background is also labeled
+    max_blobs = max_ships + 1
+
     # No blobs/ships, return empty mask
     if np.sum(input) == 0:
         return np.expand_dims(input, 0)
 
     # Labels blobs/ships in the image
     labeled_ships, num_ships = label(input)
-    # Check if they are above a minimum size
-    blob_sizes = np.bincount(labeled_ships.ravel())
-    too_small = blob_sizes < min_size
-    if np.sum(too_small) > 0:
-        # Labels that are below that size are set to background, the remaining objects
-        # are relabeled
-        mask = too_small[labeled_ships]
-        labeled_ships[mask] = 0
-        labeled_ships, num_ships = label(labeled_ships)
+    if num_ships > max_blobs:
+        if on_max_error:
+            raise ValueError(
+                "too many ships found {}, expect a maximum of {}".format(
+                    num_ships, max_ships
+                )
+            )
+        else:
+            # Compute the size of each labeled blob and get the corresponding size so
+            # that only max_blobs remain
+            blob_sizes = np.bincount(labeled_ships.ravel())
+            sorted_blob_sizes = np.sort(blob_sizes)
+            min_size = sorted_blob_sizes[-max_blobs]
+            too_small = blob_sizes < min_size
 
-    if np.sum(num_ships > max_ships_error):
-        raise ValueError(
-            "too many ships found {}, increase min_size to remove smaller "
-            "ships that are likely to be noise, or increase max_ships_error to allow "
-            "more ships to be found and processed".format(num_ships)
-        )
+            # Labels that are below min_size are set to background, the remaining
+            # objects are relabeled
+            mask = too_small[labeled_ships]
+            labeled_ships[mask] = 0
+            labeled_ships, num_ships = label(labeled_ships)
 
-    # For convenience, each ship is isolated in an image
-    # Achieving this is equivalent to converting labeled_ships into its one hot form
-    # and then removing the first channel which is the background
+    # For convenience, each ship is isolated in an image. Achieving this is equivalent
+    # to converting labeled_ships into its one hot form and then removing the first
+    # channel which is the background
     out = to_onehot_np(labeled_ships, num_ships + 1)[1:]
 
     return out
@@ -253,13 +260,3 @@ def dataloader_info(dataloader):
     print("Image size:", images.size())
     print("Targets size:", targets.size())
     imshow_batch(images, targets)
-
-
-def make_submission(save_dir, image_ids, predictions):
-    rle = []
-    for pred in predictions:
-        rle.append(rle_encode(pred))
-
-    submission_df = pd.DataFrame({"ImageId": image_ids, "EncodedPixels": rle})
-    submission_path = os.path.join(save_dir, "submission.csv")
-    submission_df.to_csv(submission_path, index=False)
