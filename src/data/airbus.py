@@ -19,8 +19,8 @@ class AirbusShipDataset(Dataset):
     clf_filename = "train_ship_segmentations_v2.csv"
     seg_filename = "train_ship_segmentations_seg.csv"
 
-    w_enet = [1.42340848, 47.8291847]
-    w_mfb = [0.5013302, 188.44108246]
+    weights_enet = [1.42340848, 47.8291847]
+    weights_mfb = [0.5013302, 188.44108246]
 
     def __init__(
         self,
@@ -31,12 +31,14 @@ class AirbusShipDataset(Dataset):
         target_transform=None,
         train_val_split=0.2,
         data_slice=1.0,
+        return_path=False,
         random_state=None,
     ):
         self.root_dir = root_dir
         self.mode = mode.lower()
         self.transform = transform
         self.target_transform = target_transform
+        self.return_path = return_path
         if for_segmentation:
             rle_filename = self.seg_filename
         else:
@@ -81,7 +83,7 @@ class AirbusShipDataset(Dataset):
         elif self.mode == "test":
             # Get the list of images from the test set
             data_dir = os.path.join(root_dir, self.test_dir)
-            data_names = os.listdir(data_dir)
+            data_names = sorted(os.listdir(data_dir))
             data_names = self._slice(data_names, data_slice)
             self.data_path = [os.path.join(data_dir, f) for f in data_names]
 
@@ -99,20 +101,20 @@ class AirbusShipDataset(Dataset):
             index (int): index of the item in the data_pathset
 
         Returns:
-            tuple: (image, target) where `image` is a `PIL.Image` and `target` is a
-            `numpy.ndarray` mask.
+            tuple: (image, target) if `return_path` is False or (image, target, image_path)
+            if `return_path` is True. `image` and `target` are `PIL.Image` and
+            `image_path` is a string.
 
         """
         # Load image from disk
-        img = Image.open(self.data_path[index])
+        img_path = self.data_path[index]
+        img = Image.open(img_path)
 
         # Create the target from the run-length encoding
         target = np.zeros(img.size)
         if self.target_df is not None:
             # Get the RLE code by selecting all rows with the image filename
-            rle_code = self.target_df.loc[
-                os.path.basename(self.data_path[index])
-            ].values.flatten()
+            rle_code = self.target_df.loc[os.path.basename(img_path)].values.flatten()
             if len(rle_code) > 1:
                 rle = " ".join(rle_code)
             else:
@@ -130,7 +132,11 @@ class AirbusShipDataset(Dataset):
         if self.target_transform and target is not None:
             target = self.target_transform(target)
 
-        return img, target
+        out = (img, target)
+        if self.return_path:
+            out += (img_path,)
+
+        return out
 
     def __len__(self):
         """Returns the length of the data_pathset."""
