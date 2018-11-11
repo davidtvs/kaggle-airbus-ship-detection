@@ -1,6 +1,6 @@
 import numpy as np
 from metric import metric
-from utils import to_onehot
+from utils import to_onehot_np
 
 
 class BinaryDice(metric.Metric):
@@ -121,8 +121,8 @@ class Dice(metric.Metric):
         elif target.min() < 0 or target.max() > self.num_classes - 1:
             raise ValueError("target values outside range [0, num_classes-1]")
 
-        predicted = to_onehot(predicted, self.num_classes).numpy()
-        target = to_onehot(target, self.num_classes).numpy()
+        predicted = to_onehot_np(predicted.numpy(), self.num_classes, axis=1)
+        target = to_onehot_np(target.numpy(), self.num_classes, axis=1)
 
         self.intersection += np.sum(target * predicted, axis=(3, 2, 0))
         self.cardinality_t += np.sum(target, axis=(3, 2, 0))

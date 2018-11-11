@@ -1,6 +1,6 @@
 import torch
 import torch.nn as nn
-import utils
+from utils import to_onehot_tensor
 
 
 class BinaryFocalWithLogitsLoss(nn.Module):
@@ -273,7 +273,7 @@ class DiceWithLogitsLoss(nn.Module):
                 )
             )
 
-        target_onehot = utils.to_onehot(target, input.size(1))
+        target_onehot = to_onehot_tensor(target, num_classes=input.size(1), axis=1)
         probabilities = nn.functional.softmax(input, 1)
 
         # Dice = 2 * intersection(X, Y) / (|X| + |Y|)
