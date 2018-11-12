@@ -39,7 +39,8 @@ if __name__ == "__main__":
         transform=image_transform,
         target_transform=target_transform,
         train_val_split=0.0,
-        data_slice=0.001,
+        data_slice=1.0,
+        return_path=True,
     )
     dataloader = data.DataLoader(
         dataset,
@@ -67,14 +68,18 @@ if __name__ == "__main__":
     net = net.to(device).eval()
     target_list = []
     pred_list = []
-    for step, (img_batch, target_batch) in enumerate(tqdm(dataloader)):
+    path_list = []
+    for step, (img_batch, target_batch, path_batch) in enumerate(tqdm(dataloader)):
         img_batch = img_batch.to(device)
         pred_batch = predict_batch(net, img_batch, utils.logits_to_pred_sigmoid)
-        pred_list.append(pred_batch)
-        target_list.append(target_batch)
+        pred_list.extend(pred_batch.squeeze(1))
+        target_list.extend(target_batch)
+        path_list.extend([os.path.basename(fp) for fp in path_batch])
 
-    predictions = np.concatenate(pred_list, axis=0)
-    targets = np.concatenate(target_list, axis=0)
+    # Convert to numpy arrays to enable indexing
+    predictions = np.array(pred_list)
+    targets = np.array(target_list)
+    paths = np.array(path_list)
 
     print()
     print("Generating training dataset for segmentation...")
@@ -86,13 +91,11 @@ if __name__ == "__main__":
     print("False positives: {}".format(np.sum(false_positives)))
     print("False negatives: {}".format(np.sum(false_negatives)))
 
-    # Select from the full training set the images that are either true positives or
-    # false positives
+    # Select from the full training set the images that have ships or are false
+    # positives
     csv_path = os.path.join(config["dataset_dir"], dataset.clf_filename)
     df = pd.read_csv(csv_path).set_index("ImageId")
-    df = df.drop(index=dataset.train_corrupted, errors="ignore")
-    image_id = df.index.unique()
-    df = df.loc[(image_id[true_targets]) | (image_id[false_positives])]
+    df = df.loc[paths[true_targets | false_positives]]
 
     csv_path = os.path.join(os.path.dirname(args.config), dataset.seg_filename)
     df.to_csv(csv_path)
