@@ -1,6 +1,7 @@
 import os
 from tqdm import tqdm
 import pandas as pd
+import cv2
 import torch
 import torch.utils.data as data
 import torchvision.transforms as tf
@@ -11,7 +12,6 @@ from engine import predict_batch
 from args import segmentation_dataset_args
 from data.airbus import AirbusShipDataset
 from data.utils import rle_encode
-from skimage.transform import resize
 
 
 if __name__ == "__main__":
@@ -120,10 +120,12 @@ if __name__ == "__main__":
         # individual masks
         for (pred, path) in zip(pred_batch, path_batch):
             image_id = os.path.basename(path)
-            pred = pred.squeeze()
+            pred = pred.squeeze(0).astype("uint8")
             if pred.shape != output_dim:
-                pred = resize(pred, output_dim, order=0)
-            split_pred_masks = utils.split_ships(pred)
+                pred = cv2.resize(pred, output_dim, interpolation=cv2.INTER_NEAREST)
+            if config["oriented_bbox"]:
+                pred = utils.fill_oriented_bbox(pred)
+            split_pred_masks = utils.split_ships(pred, dtype="uint8")
 
             # Iterate over the individual masks and encode them in run-length form,
             # finally, append to the submission data frame a new row with the image file

@@ -77,6 +77,8 @@ if __name__ == "__main__":
         net = models.ENet(num_classes)
     elif model_str == "linknet":
         net = models.LinkNet(num_classes)
+    elif model_str == "linknet34":
+        net = models.LinkNet(num_classes, 34)
     elif model_str == "dilatedunet":
         net = models.DilatedUNet(classes=num_classes)
     else:
@@ -84,6 +86,7 @@ if __name__ == "__main__":
             "requested unknown model {}, expect one of "
             "(ENet, LinkNet, DilatedUNet)".format(config["model"])
         )
+    print(net)
 
     # Loss function
     loss_name = config["loss"].lower()

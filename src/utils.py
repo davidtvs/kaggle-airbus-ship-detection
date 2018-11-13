@@ -3,6 +3,7 @@ import errno
 import json
 import torch
 import torchvision
+import cv2
 import numpy as np
 from scipy.ndimage import label
 import matplotlib.pyplot as plt
@@ -95,7 +96,7 @@ def logits_to_pred_sigmoid(logits):
     return torch.sigmoid(logits).round()
 
 
-def split_ships(input, max_ships=30, on_max_error=False):
+def split_ships(input, max_ships=30, on_max_error=False, dtype="uint8"):
     """Takes a mask of ships and splits them into different individual masks.
 
     Uses a structuring element to define connected blobs (ships in this case),
@@ -137,9 +138,9 @@ def split_ships(input, max_ships=30, on_max_error=False):
             # Compute the size of each labeled blob and get the corresponding size so
             # that only max_blobs remain
             blob_sizes = np.bincount(labeled_ships.ravel())
-            sorted_blob_sizes = np.sort(blob_sizes)
-            min_size = sorted_blob_sizes[-max_blobs]
-            too_small = blob_sizes < min_size
+            sorted_blob_idx = np.argsort(blob_sizes)
+            too_small = np.zeros_like(blob_sizes, dtype=bool)
+            too_small[sorted_blob_idx[:-max_blobs]] = True
 
             # Labels that are below min_size are set to background, the remaining
             # objects are relabeled
@@ -150,9 +151,23 @@ def split_ships(input, max_ships=30, on_max_error=False):
     # For convenience, each ship is isolated in an image. Achieving this is equivalent
     # to converting labeled_ships into its one hot form and then removing the first
     # channel which is the background
-    out = to_onehot_np(labeled_ships, num_ships + 1)[1:]
+    out = to_onehot_np(labeled_ships, num_ships + 1, dtype=dtype)[1:]
 
     return out
+
+
+def fill_oriented_bbox(img, color=1):
+    # For some reason it needs a copy else it raises an error
+    _, contours, _ = cv2.findContours(
+        img.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
+    )
+    obbox = np.zeros_like(img, dtype=np.uint8)
+    for cnt in contours:
+        rect = cv2.minAreaRect(cnt)
+        box = cv2.boxPoints(rect)
+        box = np.int0(box)
+        cv2.fillPoly(obbox, [box], color)
+    return obbox
 
 
 def save_config(filepath, config):
@@ -210,19 +225,31 @@ def imshow_batch(
         )
 
     # Make a grid with the images
-    images = torchvision.utils.make_grid(
-        images, nrow=nrow, padding=padding, scale_each=scale_each, pad_value=pad_value
-    ).numpy()
-
-    # Check if targets is a Tensor. If it is, display it; otherwise, show the images
-    if isinstance(targets, torch.Tensor) and targets.dim() == 4:
-        targets = torchvision.utils.make_grid(
-            targets,
+    images = (
+        torchvision.utils.make_grid(
+            images,
             nrow=nrow,
             padding=padding,
             scale_each=scale_each,
             pad_value=pad_value,
-        ).numpy()
+        )
+        .cpu()
+        .numpy()
+    )
+
+    # Check if targets is a Tensor. If it is, display it; otherwise, show the images
+    if isinstance(targets, torch.Tensor) and targets.dim() == 4:
+        targets = (
+            torchvision.utils.make_grid(
+                targets,
+                nrow=nrow,
+                padding=padding,
+                scale_each=scale_each,
+                pad_value=pad_value,
+            )
+            .cpu()
+            .numpy()
+        )
 
         fig, axarr = plt.subplots(3, 1)
         axarr[0].set_title("Batch of images")
