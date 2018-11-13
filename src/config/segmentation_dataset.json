@@ -1,5 +1,5 @@
 {
-    "batch_size": 128,
+    "batch_size": 2,
     "dataset_dir": "../dataset/",
     "dataset_info": false,
     "device": "cuda",
