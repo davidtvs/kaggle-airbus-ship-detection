@@ -36,8 +36,8 @@ def train_args():
     return parser.parse_args()
 
 
-def segmentation_dataset_args():
-    """Defines command-line arguments for predictions."""
+def config_args():
+    """Defines command-line arguments for scripts that accept a config file."""
     parser = ArgumentParser()
 
     parser.add_argument(

@@ -9,14 +9,14 @@ import utils
 import models
 import transforms as ctf
 from engine import predict_batch
-from args import segmentation_dataset_args
+from args import config_args
 from data.airbus import AirbusShipDataset
 from data.utils import rle_encode
 
 
 if __name__ == "__main__":
     # Get arguments from the command-line and json configuration
-    args = segmentation_dataset_args()
+    args = config_args()
     config = utils.load_config(args.config)
 
     input_dim = (config["img_h"], config["img_w"])
@@ -75,13 +75,16 @@ if __name__ == "__main__":
         seg_net = models.ENet(num_classes)
     elif model_str == "linknet":
         seg_net = models.LinkNet(num_classes)
+    elif model_str == "linknet34":
+        seg_net = models.LinkNet(num_classes, 34)
     elif model_str == "dilatedunet":
         seg_net = models.DilatedUNet(classes=num_classes)
     else:
         raise ValueError(
             "requested unknown model {}, expect one of "
-            "(ENet, LinkNet, DilatedUNet)".format(config["model"])
+            "(ENet, LinkNet, LinkNet34, DilatedUNet)".format(config["model"])
         )
+    print(seg_net)
 
     print("Loading model weights from {}...".format(seg_checkpoint))
     checkpoint = torch.load(seg_checkpoint, map_location=torch.device("cpu"))

@@ -4,7 +4,6 @@ import torch.nn as nn
 import torch.utils.data as data
 import torchvision.transforms as tf
 from torch.optim.lr_scheduler import ReduceLROnPlateau
-
 import utils
 import metric
 import engine
@@ -84,7 +83,7 @@ if __name__ == "__main__":
     else:
         raise ValueError(
             "requested unknown model {}, expect one of "
-            "(ENet, LinkNet, DilatedUNet)".format(config["model"])
+            "(ENet, LinkNet, LinkNet34, DilatedUNet)".format(config["model"])
         )
     print(net)
 

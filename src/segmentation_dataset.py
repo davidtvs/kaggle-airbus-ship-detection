@@ -9,13 +9,13 @@ import utils
 import transforms as ctf
 import models.classifier as classifier
 from engine import predict_batch
-from args import segmentation_dataset_args
+from args import config_args
 from data.airbus import AirbusShipDataset
 
 
 if __name__ == "__main__":
     # Get arguments from the command-line and json configuration
-    args = segmentation_dataset_args()
+    args = config_args()
     config = utils.load_config(args.config)
 
     input_dim = (config["img_h"], config["img_w"])

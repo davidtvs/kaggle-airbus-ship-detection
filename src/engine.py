@@ -162,10 +162,20 @@ class Trainer:
 
 
 def predict(model, dataloader, output_fn=None, device=None):
+    # Get the current time to know how much time it took to make the predictions
+    since = time.time()
+
     pred_list = list(
         predict_yield_batch(model, dataloader, output_fn=output_fn, device=device)
     )
     predictions = np.concatenate(pred_list, axis=0)
+
+    time_elapsed = time.time() - since
+    print(
+        "Predictions complete in {:.0f}m {:.0f}s".format(
+            time_elapsed // 60, time_elapsed % 60
+        )
+    )
 
     return predictions
 
@@ -176,27 +186,19 @@ def predict_yield_batch(model, dataloader, output_fn=None, device=None):
     device = torch.device(device)
     model = model.to(device).eval()
 
-    # Get the current time to know how much time it took to make the predictions
-    since = time.time()
     for step, (images, _) in enumerate(tqdm(dataloader)):
         images = images.to(device)
         yield predict_batch(model, images, output_fn=output_fn)
-
-    time_elapsed = time.time() - since
-    print(
-        "Predictions complete in {:.0f}m {:.0f}s".format(
-            time_elapsed // 60, time_elapsed % 60
-        )
-    )
 
 
 def predict_batch(model, input, output_fn=None):
     # We don't want to compute gradients, deactivate the autograd engine, this also
     # saves a lot of memory
     with torch.no_grad():
-        # Do a froward pass with the images and apply the sigmoid function to get
-        # the prediction
+        # Do a froward pass with the images
         outputs = model(input)
+
+        # Apply the function to convert model output to preedictions
         # Note: Because gradients are not computed there is no need to detach from
         # the graph
         if output_fn is not None:
