@@ -15,7 +15,7 @@ class ComboNet(nn.Module):
         if self.clf_output_fn is not None:
             clf_out = self.clf_output_fn(clf_out)
 
-        has_ship_mask = torch.eq(clf_out, torch.Tensor([1]).to(x.device)).squeeze()
+        has_ship_mask = torch.eq(clf_out, torch.Tensor([1]).to(x.device)).squeeze(1)
         out_size = (x.size(0), self.seg_net.num_classes, x.size(2), x.size(3))
         out = torch.zeros(out_size, device=x.device)
 

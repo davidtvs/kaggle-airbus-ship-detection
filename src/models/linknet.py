@@ -4,14 +4,21 @@ import torchvision.models as models
 
 
 class LinkNet(nn.Module):
-    def __init__(self, num_classes, pretrained_encoder=True):
+    def __init__(self, num_classes, resnet_size=18, pretrained_encoder=True):
         super().__init__()
         self.num_classes = num_classes
 
         # The LinkNet encoder is a ResNet18 without the last average pooling layer and
         # the fully connected layer
-        resnet18 = models.resnet18(pretrained=pretrained_encoder)
-        encoder_list = list(resnet18.named_children())[:-2]
+        if resnet_size == 18:
+            resnet = models.resnet18(pretrained=pretrained_encoder)
+        elif resnet_size == 34:
+            resnet = models.resnet34(pretrained=pretrained_encoder)
+        else:
+            raise ValueError(
+                "expected 18 or 34 for resnet_size, got {}".format(resnet_size)
+            )
+        encoder_list = list(resnet.named_children())[:-2]
         self.encoder = nn.Sequential(OrderedDict([*encoder_list]))
 
         # Construct the decoder
