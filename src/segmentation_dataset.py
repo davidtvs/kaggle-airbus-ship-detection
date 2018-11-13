@@ -8,12 +8,18 @@ import torchvision.transforms as tf
 import utils
 import transforms as ctf
 import models.classifier as classifier
+from post_processing import sigmoid_threshold
 from engine import predict_batch
 from args import config_args
 from data.airbus import AirbusShipDataset
 
 
 if __name__ == "__main__":
+    # For some reason this script hits the limit of file descriptors and an error like
+    # "RuntimeError: received 0 items of ancdata" is raised. Uncomment the following
+    # line to solve the problem
+    # torch.multiprocessing.set_sharing_strategy("file_system")
+
     # Get arguments from the command-line and json configuration
     args = config_args()
     config = utils.load_config(args.config)
@@ -55,6 +61,7 @@ if __name__ == "__main__":
     print("Loading ship detection model...")
     num_classes = 1
     net = classifier.resnet(config["resnet_size"], num_classes)
+    print(net)
 
     print("Loading model weights from {}...".format(checkpoint_path))
     checkpoint = torch.load(checkpoint_path, map_location=torch.device("cpu"))
@@ -71,7 +78,7 @@ if __name__ == "__main__":
     path_list = []
     for step, (img_batch, target_batch, path_batch) in enumerate(tqdm(dataloader)):
         img_batch = img_batch.to(device)
-        pred_batch = predict_batch(net, img_batch, utils.logits_to_pred_sigmoid)
+        pred_batch = predict_batch(net, img_batch, sigmoid_threshold)
         pred_list.extend(pred_batch.squeeze(1))
         target_list.extend(target_batch)
         path_list.extend([os.path.basename(fp) for fp in path_batch])

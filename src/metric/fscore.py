@@ -1,6 +1,6 @@
 import numpy as np
 from metric import metric, iou
-from utils import split_ships
+from post_processing import split_ships
 
 
 def f_score(prediction_masks, target_masks, beta=2, thresholds=np.arange(0.5, 1, 0.05)):
@@ -123,8 +123,8 @@ class AirbusFScoreApprox(metric.Metric):
             raise ValueError("target values are not binary")
 
         # Flatten the tensor and convert to numpy
-        predicted = predicted.squeeze().cpu().numpy()
-        target = target.squeeze().cpu().numpy()
+        predicted = predicted.squeeze(1).cpu().numpy()
+        target = target.squeeze(1).cpu().numpy()
 
         for p, t in zip(predicted, target):
             # Try to split the segmentation mask in into one mask per ship

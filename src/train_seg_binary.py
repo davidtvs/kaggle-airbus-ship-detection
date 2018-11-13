@@ -12,6 +12,7 @@ import models.loss as loss
 import transforms as ctf
 from args import train_args
 from data.airbus import AirbusShipDataset
+from post_processing import sigmoid_threshold
 
 # Run only if this module is being run directly
 if __name__ == "__main__":
@@ -171,9 +172,7 @@ if __name__ == "__main__":
         model_checkpoint=model_checkpoint,
         device=config["device"],
     )
-    net, checkpoint = train.fit(
-        train_loader, val_loader, output_fn=utils.logits_to_pred_sigmoid
-    )
+    net, checkpoint = train.fit(train_loader, val_loader, output_fn=sigmoid_threshold)
 
     # Save a summary file containing the args, losses, and metrics
     config_path = os.path.join(checkpoint_dir, os.path.basename(args.config))

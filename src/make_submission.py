@@ -1,13 +1,13 @@
 import os
 from tqdm import tqdm
 import pandas as pd
-import cv2
 import torch
 import torch.utils.data as data
 import torchvision.transforms as tf
-import utils
 import models
+import utils
 import transforms as ctf
+import post_processing as pp
 from engine import predict_batch
 from args import config_args
 from data.airbus import AirbusShipDataset
@@ -84,7 +84,6 @@ if __name__ == "__main__":
             "requested unknown model {}, expect one of "
             "(ENet, LinkNet, LinkNet34, DilatedUNet)".format(config["model"])
         )
-    print(seg_net)
 
     print("Loading model weights from {}...".format(seg_checkpoint))
     checkpoint = torch.load(seg_checkpoint, map_location=torch.device("cpu"))
@@ -95,9 +94,10 @@ if __name__ == "__main__":
     net = models.ComboNet(
         clf_net,
         seg_net,
-        clf_output_fn=utils.logits_to_pred_sigmoid,
-        seg_output_fn=utils.logits_to_pred_sigmoid,
+        clf_output_fn=pp.sigmoid_threshold,
+        seg_output_fn=pp.sigmoid_threshold,
     )
+    print(net)
 
     print()
     print("Generating predictions...")
@@ -125,10 +125,10 @@ if __name__ == "__main__":
             image_id = os.path.basename(path)
             pred = pred.squeeze(0).astype("uint8")
             if pred.shape != output_dim:
-                pred = cv2.resize(pred, output_dim, interpolation=cv2.INTER_NEAREST)
+                pred = pp.resize(pred, output_dim)
             if config["oriented_bbox"]:
-                pred = utils.fill_oriented_bbox(pred)
-            split_pred_masks = utils.split_ships(pred, dtype="uint8")
+                pred = pp.fill_oriented_bbox(pred)
+            split_pred_masks = pp.split_ships(pred, dtype="uint8")
 
             # Iterate over the individual masks and encode them in run-length form,
             # finally, append to the submission data frame a new row with the image file
