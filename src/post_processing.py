@@ -87,15 +87,40 @@ def split_ships(img, max_ships=30, on_max_error=False, dtype="uint8"):
     return out
 
 
-def fill_oriented_bbox(img, color=1):
+def imfill(img, color=1):
+    _, contours, _ = cv2.findContours(img, cv2.RETR_CCOMP, cv2.CHAIN_APPROX_SIMPLE)
+    for cnt in contours:
+        cv2.drawContours(img, [cnt], 0, color, -1)
+
+    return img
+
+
+def fill_oriented_bbox(img, fill_threshold=None, color=1):
     # For some reason it needs a copy else it raises an error
     _, contours, _ = cv2.findContours(
         img.copy(), cv2.RETR_LIST, cv2.CHAIN_APPROX_SIMPLE
     )
-    obbox = np.zeros_like(img, dtype=np.uint8)
+    out = np.zeros_like(img, dtype=np.uint8)
     for cnt in contours:
+        # Compute the oriented bounding box
         rect = cv2.minAreaRect(cnt)
         box = cv2.boxPoints(rect)
         box = np.int0(box)
+        obbox = np.zeros_like(img, dtype=np.uint8)
         cv2.fillPoly(obbox, [box], color)
-    return obbox
+
+        if fill_threshold is not None:
+            # Fill the contour so we can compare it to the oriented bounding box later
+            cnt_fill = np.zeros_like(img, dtype=np.uint8)
+            cv2.fillPoly(cnt_fill, [cnt], color)
+
+            # Compare the areas and return the filled bounding box only if the ratio is
+            # lower than fill_threshold
+            if np.sum(obbox) / np.sum(cnt_fill) < fill_threshold:
+                out = np.where(out > 0, out, obbox)
+            else:
+                out = np.where(out > 0, out, cnt_fill)
+        else:
+            out = np.where(out > 0, out, obbox)
+
+    return out
