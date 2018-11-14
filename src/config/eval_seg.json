@@ -1,0 +1,19 @@
+{
+    "batch_size": 2,
+    "dataset_dir": "../dataset/",
+    "dataset_info": false,
+    "remove_overlap": "val",
+    "device": "cuda",
+    "img_h": 384,
+    "img_w": 384,
+    "oriented_bbox": true,
+    "oriented_bbox_th": 1.05,
+    "imfill": false,
+    "out_h": 384,
+    "out_w": 384,
+    "model_checkpoint": "checkpoints/model/model.pth",
+    "model": "linknet",
+    "slice_factor": 1.0,
+    "val_split": 0.1,
+    "workers": 4
+}
