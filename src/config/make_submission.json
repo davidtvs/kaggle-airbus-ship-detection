@@ -6,6 +6,8 @@
     "img_h": 224,
     "img_w": 224,
     "oriented_bbox": false,
+    "oriented_bbox_th": null,
+    "imfill": false,
     "out_h": 768,
     "out_w": 768,
     "clf_checkpoint": "checkpoints/model/model.pth",

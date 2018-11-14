@@ -124,10 +124,16 @@ if __name__ == "__main__":
         for (pred, path) in zip(pred_batch, path_batch):
             image_id = os.path.basename(path)
             pred = pred.squeeze(0).astype("uint8")
+
+            # Post processing
             if pred.shape != output_dim:
                 pred = pp.resize(pred, output_dim)
+            if config["imfill"]:
+                pred = pp.imfill(pred)
             if config["oriented_bbox"]:
-                pred = pp.fill_oriented_bbox(pred)
+                pred = pp.fill_oriented_bbox(pred, config["oriented_bbox_th"])
+
+            # Split ships into masks of isolated ships
             split_pred_masks = pp.split_ships(pred, dtype="uint8")
 
             # Iterate over the individual masks and encode them in run-length form,
