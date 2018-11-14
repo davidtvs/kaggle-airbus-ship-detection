@@ -19,6 +19,9 @@ class AirbusShipDataset(Dataset):
     clf_filename = "train_ship_segmentations_v2.csv"
     seg_filename = "train_ship_segmentations_seg.csv"
 
+    # Overlapping images in training set
+    overlap_filename = "duplicates.csv"
+
     weights_enet = [1.42340848, 47.8291847]
     weights_mfb = [0.5013302, 188.44108246]
 
@@ -32,6 +35,7 @@ class AirbusShipDataset(Dataset):
         train_val_split=0.2,
         data_slice=1.0,
         return_path=False,
+        remove_overlap="none",
         random_state=None,
     ):
         self.root_dir = root_dir
@@ -39,13 +43,19 @@ class AirbusShipDataset(Dataset):
         self.transform = transform
         self.target_transform = target_transform
         self.return_path = return_path
+        self.remove_overlap = remove_overlap.lower()
+        if self.remove_overlap not in ("train", "val", "none"):
+            raise ValueError(
+                "expected one of (train, val, none) fore remove_overlap, got {}".format(
+                    remove_overlap
+                )
+            )
         if for_segmentation:
             rle_filename = self.seg_filename
         else:
             rle_filename = self.clf_filename
 
         if self.mode in ("train", "val"):
-
             # Read CSV with run-length encoding
             rle_path = os.path.join(root_dir, rle_filename)
             rle_df = pd.read_csv(rle_path).set_index("ImageId")
@@ -66,6 +76,10 @@ class AirbusShipDataset(Dataset):
                 shuffle=False,
                 random_state=random_state,
             )
+
+            # Remove overlapping images
+            (data_names, val_names) = self._remove_overlap(data_names, val_names)
+
             train_target_df = rle_df.loc[data_names]
             val_target_df = rle_df.loc[val_names]
 
@@ -101,9 +115,9 @@ class AirbusShipDataset(Dataset):
             index (int): index of the item in the data_pathset
 
         Returns:
-            tuple: (image, target) if `return_path` is False or (image, target, image_path)
-            if `return_path` is True. `image` and `target` are `PIL.Image` and
-            `image_path` is a string.
+            tuple: (image, target) if `return_path` is False or
+            (image, target, image_path) if `return_path` is True. `image` and `target`
+            are `PIL.Image` and `image_path` is a string.
 
         """
         # Load image from disk
@@ -152,3 +166,44 @@ class AirbusShipDataset(Dataset):
             raise TypeError("slice_size must be an int or a float")
 
         return x[:slice_size]
+
+    def _remove_overlap(self, train, val):
+        """Remove overlapping images from a list of image filenames.
+
+        Source: https://www.kaggle.com/iafoss/list-of-overlapping-images-for-validation-set/notebook
+
+        Arguments:
+            train (string list): list of image names in the training set.
+            val (string list): list of image names in the validation set.
+
+        Returns:
+            (string list, string list): tuple of (train, val) datasets without
+            overlapped images.
+        """
+        if self.remove_overlap == "train":
+            search_names = val
+            remove_names = train
+        elif self.remove_overlap == "val":
+            search_names = train
+            remove_names = val
+        else:
+            return (train, val)
+
+        overlap_path = os.path.join(self.root_dir, self.overlap_filename)
+        overlap_df = pd.read_csv(overlap_path).set_index("ImageId")
+
+        overlap_imgs = []
+        for name in search_names:
+            s = overlap_df.loc[name, "duplicates"]
+            if not isinstance(s, float):
+                for idx in s.split():
+                    overlap_imgs.append(idx)
+        overlap_imgs = set(overlap_imgs)
+        remove_names = [name for name in remove_names if name not in overlap_imgs]
+
+        if self.remove_overlap == "train":
+            out = (remove_names, search_names)
+        else:
+            out = (search_names, remove_names)
+
+        return out
