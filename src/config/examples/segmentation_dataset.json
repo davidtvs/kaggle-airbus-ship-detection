@@ -1,11 +1,11 @@
 {
-    "batch_size": 24,
+    "batch_size": 2,
     "dataset_dir": "../dataset/",
     "dataset_info": false,
     "device": "cuda",
-    "img_h": 768,
-    "img_w": 768,
-    "model_checkpoint": "checkpoints/sns34_i768/sns34_i768.pth",
+    "img_h": 224,
+    "img_w": 224,
+    "model_checkpoint": "./checkpoints/model/model.pth",
     "resnet_size": 34,
     "workers": 4
 }

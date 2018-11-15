@@ -1,0 +1,20 @@
+{
+    "batch_size": 32,
+    "checkpoint_dir": "checkpoints",
+    "dataset_dir": "../dataset/",
+    "dataset_info": false,
+    "device": "cuda",
+    "epochs": 10,
+    "img_h": 384,
+    "img_w": 384,
+    "loss": "bce_bdl",
+    "lr_patience": 3,
+    "lr_rate": 0.001,
+    "model": "linknet34",
+    "model_name": "linknet34_fscore_bce_bdl_i384",
+    "optimizer": "adam",
+    "slice_factor": 1.0,
+    "stop_patience": 7,
+    "val_split": 0.1,
+    "workers": 4
+}

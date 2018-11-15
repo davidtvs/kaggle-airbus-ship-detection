@@ -1,0 +1,18 @@
+{
+    "batch_size": 128,
+    "checkpoint_dir": "checkpoints",
+    "dataset_dir": "../dataset/",
+    "dataset_info": false,
+    "device": "cuda",
+    "epochs": 30,
+    "img_h": 224,
+    "img_w": 224,
+    "lr_patience": 3,
+    "lr_rate": 0.001,
+    "model_name": "sns34_i224",
+    "resnet_size": 34,
+    "slice_factor": 1.0,
+    "stop_patience": 10,
+    "val_split": 0.15,
+    "workers": 4
+}
